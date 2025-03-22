@@ -20,13 +20,19 @@ interface CustomOfferDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onOfferSubmit: () => void;
+  previousOffers?: {
+    amount: string;
+    message: string;
+    services: string[];
+  }[];
 }
 
 const CustomOfferDialog: React.FC<CustomOfferDialogProps> = ({ 
   loan, 
   isOpen, 
   onClose, 
-  onOfferSubmit 
+  onOfferSubmit,
+  previousOffers = []
 }) => {
   const { toast } = useToast();
   const [offerAmount, setOfferAmount] = useState<string>(loan.amount.toString());
@@ -34,6 +40,16 @@ const CustomOfferDialog: React.FC<CustomOfferDialogProps> = ({
   const [services, setServices] = useState<string[]>([...loan.services]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [customService, setCustomService] = useState<string>('');
+
+  // If there are previous offers, initialize with the latest one
+  React.useEffect(() => {
+    if (previousOffers.length > 0) {
+      const latestOffer = previousOffers[previousOffers.length - 1];
+      setOfferAmount(latestOffer.amount);
+      setMessage(latestOffer.message);
+      setServices(latestOffer.services);
+    }
+  }, [previousOffers]);
 
   const handleSubmitOffer = () => {
     if (!offerAmount || parseFloat(offerAmount) <= 0) {
@@ -80,6 +96,16 @@ const CustomOfferDialog: React.FC<CustomOfferDialogProps> = ({
         </DialogHeader>
         
         <div className="py-4 space-y-4">
+          {previousOffers.length > 0 && (
+            <div className="bg-blue-50 p-3 rounded-md text-blue-800 text-sm">
+              <p className="font-medium mb-1">Previously Submitted Offer</p>
+              <p><span className="font-medium">Amount:</span> ₹{previousOffers[previousOffers.length - 1].amount}</p>
+              {previousOffers[previousOffers.length - 1].message && (
+                <p className="mt-1"><span className="font-medium">Message:</span> {previousOffers[previousOffers.length - 1].message}</p>
+              )}
+            </div>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="amount">Offer Amount</Label>
             <div className="relative">

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -6,6 +5,7 @@ import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
 import PaymentDialog from '@/components/loans/PaymentDialog';
 import CustomOfferDialog from '@/components/loans/CustomOfferDialog';
+import NegotiationDialog from '@/components/loans/NegotiationDialog';
 import {
   Card,
   CardContent,
@@ -40,7 +40,6 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock data for the loan details
 const getLoanDetails = (id: string) => {
   const mockLoans = [
     {
@@ -164,8 +163,11 @@ const LoanDetails = () => {
   const { toast } = useToast();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isCustomOfferDialogOpen, setIsCustomOfferDialogOpen] = useState(false);
+  const [isNegotiationDialogOpen, setIsNegotiationDialogOpen] = useState(false);
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [offerAccepted, setOfferAccepted] = useState(false);
+  
+  const [previousOffers, setPreviousOffers] = useState<any[]>([]);
   
   if (!id) {
     navigate('/loans');
@@ -184,14 +186,10 @@ const LoanDetails = () => {
   };
 
   const handleContactBorrower = () => {
-    toast({
-      title: "Message sent!",
-      description: "Your message has been sent to the borrower.",
-    });
+    setIsNegotiationDialogOpen(true);
   };
 
   const openPaymentDialog = () => {
-    // Only open payment dialog if offer was accepted
     if (offerAccepted) {
       setIsPaymentDialogOpen(true);
     } else {
@@ -217,11 +215,19 @@ const LoanDetails = () => {
   };
 
   const handleOfferSubmit = () => {
+    setPreviousOffers([
+      ...previousOffers,
+      {
+        amount: parseFloat(loan.amount.toString()), 
+        message: "Your offer has been submitted successfully. Awaiting borrower's response.",
+        services: [...loan.services]
+      }
+    ]);
+    
     setIsCustomOfferDialogOpen(false);
     setOfferSubmitted(true);
   };
 
-  // For demo purposes - simulate offer acceptance
   const handleAcceptOffer = () => {
     setOfferAccepted(true);
     toast({
@@ -244,7 +250,6 @@ const LoanDetails = () => {
           </Button>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main loan details */}
             <div className="lg:col-span-2 space-y-6">
               <Card className="overflow-hidden shadow-md">
                 <CardHeader className="pb-2 border-b">
@@ -360,7 +365,6 @@ const LoanDetails = () => {
               </Card>
             </div>
 
-            {/* Sidebar with actions and timeline */}
             <div className="space-y-6">
               {isAuthenticated && user?.role === 'lender' && (
                 <Card className="shadow-md">
@@ -377,7 +381,6 @@ const LoanDetails = () => {
                         </h4>
                         <p className="text-sm">Your offer has been sent to the borrower. You'll be notified when they accept.</p>
                         
-                        {/* Demo-only buttons - for simulating the borrower accepting the offer */}
                         <div className="mt-3 border-t pt-3 border-blue-200">
                           <p className="text-xs italic mb-2">Demo only: Simulate borrower actions</p>
                           <Button 
@@ -465,13 +468,42 @@ const LoanDetails = () => {
                   </ol>
                 </CardContent>
               </Card>
+
+              {previousOffers.length > 0 && (
+                <Card className="shadow-md">
+                  <CardHeader className="pb-2">
+                    <CardTitle>Your Offers</CardTitle>
+                    <CardDescription>History of your offers for this loan</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      {previousOffers.map((offer, index) => (
+                        <div key={index} className="p-3 border rounded-md">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-sm font-medium">Offer #{index + 1}</span>
+                            <span className="text-xs text-gray-500">
+                              {new Date().toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-lg font-bold flex items-center">
+                            <IndianRupee className="h-4 w-4 mr-1" />
+                            {offer.amount}
+                          </p>
+                          {offer.message && (
+                            <p className="text-sm mt-2 text-gray-700">{offer.message}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </div>
       </div>
       <Footer />
       
-      {/* Payment Dialog */}
       {isPaymentDialogOpen && (
         <PaymentDialog 
           loan={loan}
@@ -481,13 +513,21 @@ const LoanDetails = () => {
         />
       )}
 
-      {/* Custom Offer Dialog */}
       {isCustomOfferDialogOpen && (
         <CustomOfferDialog
           loan={loan}
           isOpen={isCustomOfferDialogOpen}
           onClose={() => setIsCustomOfferDialogOpen(false)}
           onOfferSubmit={handleOfferSubmit}
+          previousOffers={previousOffers}
+        />
+      )}
+      
+      {isNegotiationDialogOpen && (
+        <NegotiationDialog
+          loan={loan}
+          isOpen={isNegotiationDialogOpen}
+          onClose={() => setIsNegotiationDialogOpen(false)}
         />
       )}
     </div>
