@@ -210,9 +210,13 @@ const Loans = () => {
                             </div>
                             
                             <div className="flex gap-3">
-                              <Button variant="outline" size="sm">View Details</Button>
+                              <Link to={`/loans/${loan.id}`}>
+                                <Button variant="outline" size="sm">View Details</Button>
+                              </Link>
                               {isAuthenticated && user?.role === 'lender' && (
-                                <Button size="sm">Make Offer</Button>
+                                <Link to={`/loans/${loan.id}`}>
+                                  <Button size="sm">Make Offer</Button>
+                                </Link>
                               )}
                             </div>
                           </div>
@@ -235,7 +239,7 @@ const Loans = () => {
                   .slice(0, 3)
                   .map(loan => (
                     <Card key={loan.id} className="overflow-hidden hover:shadow-elevation transition-shadow">
-                      {/* Same card content as above */}
+                      {/* Card content structure similar to above */}
                       <CardHeader className="pb-2 border-b">
                         <div className="flex justify-between items-start">
                           <div>
@@ -285,9 +289,13 @@ const Loans = () => {
                             </div>
                             
                             <div className="flex gap-3">
-                              <Button variant="outline" size="sm">View Details</Button>
+                              <Link to={`/loans/${loan.id}`}>
+                                <Button variant="outline" size="sm">View Details</Button>
+                              </Link>
                               {isAuthenticated && user?.role === 'lender' && (
-                                <Button size="sm">Make Offer</Button>
+                                <Link to={`/loans/${loan.id}`}>
+                                  <Button size="sm">Make Offer</Button>
+                                </Link>
                               )}
                             </div>
                           </div>
@@ -305,7 +313,7 @@ const Loans = () => {
                   .slice(0, 3)
                   .map(loan => (
                     <Card key={loan.id} className="overflow-hidden hover:shadow-elevation transition-shadow">
-                      {/* Same card content as above */}
+                      {/* Card content structure similar to above */}
                       <CardHeader className="pb-2 border-b">
                         <div className="flex justify-between items-start">
                           <div>
@@ -355,9 +363,13 @@ const Loans = () => {
                             </div>
                             
                             <div className="flex gap-3">
-                              <Button variant="outline" size="sm">View Details</Button>
+                              <Link to={`/loans/${loan.id}`}>
+                                <Button variant="outline" size="sm">View Details</Button>
+                              </Link>
                               {isAuthenticated && user?.role === 'lender' && (
-                                <Button size="sm">Make Offer</Button>
+                                <Link to={`/loans/${loan.id}`}>
+                                  <Button size="sm">Make Offer</Button>
+                                </Link>
                               )}
                             </div>
                           </div>

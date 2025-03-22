@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Loans from "./pages/Loans";
+import LoanDetails from "./pages/LoanDetails";
 import CreateLoan from "./pages/CreateLoan";
 import NotFound from "./pages/NotFound";
 
@@ -77,6 +78,16 @@ const App = () => (
                   transition={{ duration: 0.3 }}
                 >
                   <Loans />
+                </motion.div>
+              } />
+              <Route path="/loans/:id" element={
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <LoanDetails />
                 </motion.div>
               } />
               <Route path="/create-loan" element={
