@@ -1,10 +1,11 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 40% 98%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -13,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 210 95% 60%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -32,22 +33,15 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -61,7 +55,7 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    --primary: 210 95% 60%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -95,7 +89,123 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Inter variable font */
+  @font-face {
+    font-family: 'Inter var';
+    font-weight: 100 900;
+    font-display: swap;
+    font-style: normal;
+    src: url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+  }
+
+  /* SF Pro Display for headings */
+  @font-face {
+    font-family: 'SF Pro Display';
+    font-weight: 400 700;
+    font-display: swap;
+    font-style: normal;
+    src: url('https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff');
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 dark:bg-black/70 backdrop-blur-md border border-white/20 dark:border-black/20 shadow-glass;
+  }
+  
+  .glass-card {
+    @apply glass rounded-2xl p-6;
+  }
+
+  .glass-input {
+    @apply bg-white/50 dark:bg-black/50 backdrop-blur-sm border border-white/20 dark:border-black/20 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200;
+  }
+
+  .animated-border {
+    position: relative;
+    border-radius: inherit;
+  }
+
+  .animated-border::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(
+      45deg,
+      hsl(var(--primary)),
+      hsl(var(--primary) / 0.3),
+      hsl(var(--primary) / 0.1),
+      hsl(var(--primary) / 0.3),
+      hsl(var(--primary))
+    );
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
+    -webkit-mask: 
+      linear-gradient(#fff 0 0) content-box, 
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    z-index: -1;
+  }
+
+  .button-shine {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .button-shine::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: 0.5s;
+  }
+
+  .button-shine:hover::after {
+    left: 100%;
+  }
+
+  .page-transitions-enter {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  
+  .page-transitions-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 400ms, transform 400ms;
+  }
+  
+  .page-transitions-exit {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .page-transitions-exit-active {
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 400ms, transform 400ms;
   }
 }
