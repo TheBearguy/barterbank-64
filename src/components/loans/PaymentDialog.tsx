@@ -17,9 +17,11 @@ import {
   IndianRupee, 
   CheckCircle2, 
   Shield, 
-  AlertCircle 
+  AlertCircle,
+  Star
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import RatingDialog from './RatingDialog';
 
 interface PaymentDialogProps {
   loan: any;  // We would ideally type this properly
@@ -40,13 +42,14 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   onClose, 
   onPaymentComplete 
 }) => {
-  const [step, setStep] = useState<'method' | 'details' | 'confirmation'>('method');
+  const [step, setStep] = useState<'method' | 'details' | 'confirmation' | 'rating'>('method');
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cvv, setCvv] = useState('');
   const [nameOnCard, setNameOnCard] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
 
   const paymentMethods: PaymentMethod[] = [
     { id: 'card', name: 'Credit/Debit Card', icon: <CreditCard className="h-5 w-5" /> },
@@ -70,6 +73,10 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   };
 
   const handleComplete = () => {
+    setStep('rating');
+  };
+
+  const handleRatingComplete = () => {
     onPaymentComplete();
   };
 
@@ -258,12 +265,57 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     </>
   );
 
+  const renderRating = () => (
+    <>
+      <DialogHeader>
+        <DialogTitle className="text-center">Rate Your Experience</DialogTitle>
+      </DialogHeader>
+      
+      <div className="py-6 flex flex-col items-center text-center">
+        <div className="h-16 w-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+          <Star className="h-10 w-10 text-yellow-500" />
+        </div>
+        <p className="text-lg font-medium mb-2">How was your experience?</p>
+        <p className="text-gray-600 mb-4">
+          Please take a moment to rate your experience with {loan.borrower.name}.
+        </p>
+        <Button onClick={() => setIsRatingDialogOpen(true)} className="mb-4">
+          Rate Now
+        </Button>
+        <p className="text-sm text-gray-500">
+          You can also rate later from your dashboard.
+        </p>
+      </div>
+      
+      <DialogFooter>
+        <Button variant="outline" onClick={handleRatingComplete}>
+          Skip Rating
+        </Button>
+      </DialogFooter>
+
+      {isRatingDialogOpen && (
+        <RatingDialog 
+          isOpen={isRatingDialogOpen}
+          onClose={() => {
+            setIsRatingDialogOpen(false);
+            handleRatingComplete();
+          }}
+          userToRate={{
+            name: loan.borrower.name,
+            role: 'borrower'
+          }}
+        />
+      )}
+    </>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         {step === 'method' && renderMethodSelection()}
         {step === 'details' && renderPaymentDetails()}
         {step === 'confirmation' && renderConfirmation()}
+        {step === 'rating' && renderRating()}
       </DialogContent>
     </Dialog>
   );

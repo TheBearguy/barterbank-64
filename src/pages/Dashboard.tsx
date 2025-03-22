@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -8,18 +8,23 @@ import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowRight, Clock, DollarSign, HandCoins, Send, Star, User } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
   const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Redirect if not logged in
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
+  // Show only loans created by the current user
   const mockLoans = [
     {
       id: 1,
+      createdBy: user?.id, // Match with logged-in user
       amount: 5000,
       requestDate: '2023-10-15',
       status: 'active',
@@ -27,6 +32,7 @@ const Dashboard = () => {
     },
     {
       id: 2,
+      createdBy: user?.id, // Match with logged-in user
       amount: 2000,
       requestDate: '2023-11-05',
       status: 'completed',
@@ -34,6 +40,10 @@ const Dashboard = () => {
     },
   ];
 
+  // Filter loans to only show ones created by the current user
+  const userLoans = mockLoans.filter(loan => loan.createdBy === user?.id);
+
+  // Similarly for offers, only show ones relevant to the current user
   const mockOffers = [
     {
       id: 1,
@@ -41,6 +51,7 @@ const Dashboard = () => {
       amount: 5000,
       offerDate: '2023-10-16',
       status: 'pending',
+      createdBy: 'other-user', // This would be filled with actual user ID in a real app
     },
     {
       id: 2,
@@ -48,23 +59,69 @@ const Dashboard = () => {
       amount: 3500,
       offerDate: '2023-11-01',
       status: 'accepted',
+      createdBy: 'other-user',
     },
   ];
 
   const mockServices = [
     {
       id: 1,
+      createdBy: user?.id,
       title: 'Web Development',
       description: 'Custom website development using React',
       value: 500,
     },
     {
       id: 2,
+      createdBy: user?.id,
       title: 'Logo Design',
       description: 'Professional logo design with unlimited revisions',
       value: 250,
     },
   ];
+
+  // Only show services created by the current user
+  const userServices = mockServices.filter(service => service.createdBy === user?.id);
+
+  const handleViewLoanDetails = (loanId) => {
+    navigate(`/loans/${loanId}`);
+  };
+
+  const handleCreateLoan = () => {
+    navigate('/create-loan');
+  };
+
+  const handleAcceptOffer = (offerId) => {
+    toast({
+      title: "Offer Accepted",
+      description: "You have accepted the offer. Lender has been notified.",
+    });
+    // In a real app, you would update the offer status in the database
+  };
+
+  const handleDeclineOffer = (offerId) => {
+    toast({
+      title: "Offer Declined",
+      description: "You have declined the offer. Lender has been notified.",
+    });
+    // In a real app, you would update the offer status in the database
+  };
+
+  const handleEditService = (serviceId) => {
+    toast({
+      title: "Edit Service",
+      description: "You can edit your service details here.",
+    });
+    // In a real app, navigate to service edit page or open a modal
+  };
+
+  const handleAddService = () => {
+    toast({
+      title: "Add Service",
+      description: "Add a new service or product you can offer.",
+    });
+    // In a real app, navigate to add service page or open a modal
+  };
 
   const renderBorrowerDashboard = () => (
     <Tabs defaultValue="loans" className="w-full">
@@ -77,15 +134,15 @@ const Dashboard = () => {
       <TabsContent value="loans" className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold">Your Loan Requests</h3>
-          <Button>
+          <Button onClick={handleCreateLoan}>
             <span>Create New Request</span>
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
         
-        {mockLoans.length > 0 ? (
+        {userLoans.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {mockLoans.map(loan => (
+            {userLoans.map(loan => (
               <Card key={loan.id} className="hover:shadow-elevation transition-shadow">
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
@@ -96,14 +153,18 @@ const Dashboard = () => {
                       {loan.status}
                     </div>
                   </div>
-                  <CardDescription>Requested on {loan.requestDate}</CardDescription>
+                  <CardDescription className="mt-2">Requested on {loan.requestDate}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-sm text-gray-500">
                       {loan.offersCount} Offers received
                     </span>
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleViewLoanDetails(loan.id)}
+                    >
                       View Details
                     </Button>
                   </div>
@@ -114,7 +175,7 @@ const Dashboard = () => {
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">You haven't created any loan requests yet</p>
-            <Button>Create Your First Request</Button>
+            <Button onClick={handleCreateLoan}>Create Your First Request</Button>
           </div>
         )}
       </TabsContent>
@@ -135,7 +196,7 @@ const Dashboard = () => {
                       {offer.status}
                     </div>
                   </div>
-                  <CardDescription>Offered on {offer.offerDate}</CardDescription>
+                  <CardDescription className="mt-2">Offered on {offer.offerDate}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex justify-between items-center mt-2">
@@ -145,12 +206,29 @@ const Dashboard = () => {
                     <div className="space-x-2">
                       {offer.status === 'pending' && (
                         <>
-                          <Button variant="outline" size="sm">Decline</Button>
-                          <Button size="sm">Accept</Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDeclineOffer(offer.id)}
+                          >
+                            Decline
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleAcceptOffer(offer.id)}
+                          >
+                            Accept
+                          </Button>
                         </>
                       )}
                       {offer.status === 'accepted' && (
-                        <Button variant="outline" size="sm">View Details</Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleViewLoanDetails(offer.loanId)}
+                        >
+                          View Details
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -168,15 +246,15 @@ const Dashboard = () => {
       <TabsContent value="services" className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold">Your Services & Products</h3>
-          <Button>
+          <Button onClick={handleAddService}>
             <span>Add New Service</span>
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
         
-        {mockServices.length > 0 ? (
+        {userServices.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {mockServices.map(service => (
+            {userServices.map(service => (
               <Card key={service.id} className="hover:shadow-elevation transition-shadow">
                 <CardHeader>
                   <CardTitle>{service.title}</CardTitle>
@@ -185,7 +263,13 @@ const Dashboard = () => {
                 <CardContent>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">₹{service.value}</span>
-                    <Button variant="outline" size="sm">Edit</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleEditService(service.id)}
+                    >
+                      Edit
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -194,7 +278,7 @@ const Dashboard = () => {
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">You haven't added any services or products yet</p>
-            <Button>Add Your First Service</Button>
+            <Button onClick={handleAddService}>Add Your First Service</Button>
           </div>
         )}
       </TabsContent>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -6,6 +7,7 @@ import Footer from '@/components/layout/Footer';
 import PaymentDialog from '@/components/loans/PaymentDialog';
 import CustomOfferDialog from '@/components/loans/CustomOfferDialog';
 import NegotiationDialog from '@/components/loans/NegotiationDialog';
+import RatingDialog from '@/components/loans/RatingDialog';
 import {
   Card,
   CardContent,
@@ -164,6 +166,7 @@ const LoanDetails = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isCustomOfferDialogOpen, setIsCustomOfferDialogOpen] = useState(false);
   const [isNegotiationDialogOpen, setIsNegotiationDialogOpen] = useState(false);
+  const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [offerAccepted, setOfferAccepted] = useState(false);
   
@@ -189,14 +192,24 @@ const LoanDetails = () => {
     setIsNegotiationDialogOpen(true);
   };
 
+  const handleFundLoan = () => {
+    // Instead of opening payment dialog directly, set offer as submitted
+    setOfferSubmitted(true);
+    toast({
+      title: "Offer submitted!",
+      description: "Your offer has been sent to the borrower. You'll be notified when they accept.",
+    });
+  };
+
   const openPaymentDialog = () => {
+    // Only open payment dialog if offer has been accepted
     if (offerAccepted) {
       setIsPaymentDialogOpen(true);
     } else {
-      setOfferSubmitted(true);
       toast({
-        title: "Offer submitted!",
-        description: "Your offer has been sent to the borrower. You'll be notified when they accept.",
+        title: "Offer not yet accepted",
+        description: "The borrower needs to accept your offer before you can proceed with payment.",
+        variant: "destructive",
       });
     }
   };
@@ -212,6 +225,16 @@ const LoanDetails = () => {
       variant: "default",
     });
     setIsPaymentDialogOpen(false);
+    // After payment is complete, prompt for rating
+    setIsRatingDialogOpen(true);
+  };
+
+  const handleRatingComplete = () => {
+    setIsRatingDialogOpen(false);
+    toast({
+      title: "Thank you for your feedback!",
+      description: "Your rating has been submitted successfully.",
+    });
   };
 
   const handleOfferSubmit = () => {
@@ -393,14 +416,21 @@ const LoanDetails = () => {
                           </Button>
                         </div>
                       </div>
-                    ) : (
+                    ) : offerAccepted ? (
                       <Button 
                         className="w-full" 
                         onClick={openPaymentDialog}
-                        disabled={offerSubmitted && !offerAccepted}
                       >
                         <CreditCard className="mr-2 h-4 w-4" />
-                        {offerAccepted ? "Complete Payment" : "Fund This Loan"}
+                        Complete Payment
+                      </Button>
+                    ) : (
+                      <Button 
+                        className="w-full" 
+                        onClick={handleFundLoan}
+                      >
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Fund This Loan
                       </Button>
                     )}
                     
@@ -528,6 +558,17 @@ const LoanDetails = () => {
           loan={loan}
           isOpen={isNegotiationDialogOpen}
           onClose={() => setIsNegotiationDialogOpen(false)}
+        />
+      )}
+
+      {isRatingDialogOpen && (
+        <RatingDialog
+          isOpen={isRatingDialogOpen}
+          onClose={() => setIsRatingDialogOpen(false)}
+          userToRate={{
+            name: loan.borrower.name,
+            role: 'borrower'
+          }}
         />
       )}
     </div>
