@@ -76,9 +76,9 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   const renderMethodSelection = () => (
     <>
       <DialogHeader>
-        <DialogTitle>Choose Payment Method</DialogTitle>
+        <DialogTitle>Complete Your Payment</DialogTitle>
         <DialogDescription>
-          Select your preferred method to fund this loan
+          Your offer has been accepted by the borrower. Choose your payment method to fund this loan.
         </DialogDescription>
       </DialogHeader>
       <div className="py-4 space-y-4">

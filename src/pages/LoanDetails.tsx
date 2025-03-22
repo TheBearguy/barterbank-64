@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
 import PaymentDialog from '@/components/loans/PaymentDialog';
+import CustomOfferDialog from '@/components/loans/CustomOfferDialog';
 import {
   Card,
   CardContent,
@@ -34,7 +35,8 @@ import {
   Shield, 
   CreditCard, 
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ThumbsUp
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -161,6 +163,9 @@ const LoanDetails = () => {
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isCustomOfferDialogOpen, setIsCustomOfferDialogOpen] = useState(false);
+  const [offerSubmitted, setOfferSubmitted] = useState(false);
+  const [offerAccepted, setOfferAccepted] = useState(false);
   
   if (!id) {
     navigate('/loans');
@@ -175,10 +180,7 @@ const LoanDetails = () => {
   }
 
   const handleMakeOffer = () => {
-    toast({
-      title: "Offer sent!",
-      description: "Your offer has been sent to the borrower.",
-    });
+    setIsCustomOfferDialogOpen(true);
   };
 
   const handleContactBorrower = () => {
@@ -189,7 +191,16 @@ const LoanDetails = () => {
   };
 
   const openPaymentDialog = () => {
-    setIsPaymentDialogOpen(true);
+    // Only open payment dialog if offer was accepted
+    if (offerAccepted) {
+      setIsPaymentDialogOpen(true);
+    } else {
+      setOfferSubmitted(true);
+      toast({
+        title: "Offer submitted!",
+        description: "Your offer has been sent to the borrower. You'll be notified when they accept.",
+      });
+    }
   };
 
   const closePaymentDialog = () => {
@@ -203,6 +214,20 @@ const LoanDetails = () => {
       variant: "default",
     });
     setIsPaymentDialogOpen(false);
+  };
+
+  const handleOfferSubmit = () => {
+    setIsCustomOfferDialogOpen(false);
+    setOfferSubmitted(true);
+  };
+
+  // For demo purposes - simulate offer acceptance
+  const handleAcceptOffer = () => {
+    setOfferAccepted(true);
+    toast({
+      title: "Offer accepted!",
+      description: "You can now proceed with the payment.",
+    });
   };
 
   return (
@@ -344,13 +369,38 @@ const LoanDetails = () => {
                     <CardDescription>Help this borrower by providing funds</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-4 space-y-4">
-                    <Button 
-                      className="w-full" 
-                      onClick={openPaymentDialog}
-                    >
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Fund This Loan
-                    </Button>
+                    {offerSubmitted && !offerAccepted ? (
+                      <div className="p-4 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                        <h4 className="font-medium flex items-center gap-2 mb-1">
+                          <ThumbsUp className="h-4 w-4" />
+                          Offer Submitted
+                        </h4>
+                        <p className="text-sm">Your offer has been sent to the borrower. You'll be notified when they accept.</p>
+                        
+                        {/* Demo-only buttons - for simulating the borrower accepting the offer */}
+                        <div className="mt-3 border-t pt-3 border-blue-200">
+                          <p className="text-xs italic mb-2">Demo only: Simulate borrower actions</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full bg-white hover:bg-blue-50"
+                            onClick={handleAcceptOffer}
+                          >
+                            Simulate Borrower Accepting Offer
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button 
+                        className="w-full" 
+                        onClick={openPaymentDialog}
+                        disabled={offerSubmitted && !offerAccepted}
+                      >
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        {offerAccepted ? "Complete Payment" : "Fund This Loan"}
+                      </Button>
+                    )}
+                    
                     <Button 
                       className="w-full" 
                       variant="outline"
@@ -403,6 +453,15 @@ const LoanDetails = () => {
                         <p className="text-base font-normal text-gray-700 dark:text-gray-300">{event.event}</p>
                       </li>
                     ))}
+                    {offerSubmitted && (
+                      <li className="mb-6 ml-4">
+                        <div className="absolute w-3 h-3 bg-blue-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
+                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">{new Date().toISOString().split('T')[0]}</time>
+                        <p className="text-base font-normal text-gray-700 dark:text-gray-300">
+                          {offerAccepted ? "Offer accepted by borrower" : "New offer received"}
+                        </p>
+                      </li>
+                    )}
                   </ol>
                 </CardContent>
               </Card>
@@ -419,6 +478,16 @@ const LoanDetails = () => {
           isOpen={isPaymentDialogOpen}
           onClose={closePaymentDialog}
           onPaymentComplete={handlePaymentComplete}
+        />
+      )}
+
+      {/* Custom Offer Dialog */}
+      {isCustomOfferDialogOpen && (
+        <CustomOfferDialog
+          loan={loan}
+          isOpen={isCustomOfferDialogOpen}
+          onClose={() => setIsCustomOfferDialogOpen(false)}
+          onOfferSubmit={handleOfferSubmit}
         />
       )}
     </div>
