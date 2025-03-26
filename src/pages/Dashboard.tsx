@@ -20,70 +20,19 @@ const Dashboard = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Show only loans created by the current user
-  const mockLoans = [
-    {
-      id: 1,
-      createdBy: user?.id, // Match with logged-in user
-      amount: 5000,
-      requestDate: '2023-10-15',
-      status: 'active',
-      offersCount: 3,
-    },
-    {
-      id: 2,
-      createdBy: user?.id, // Match with logged-in user
-      amount: 2000,
-      requestDate: '2023-11-05',
-      status: 'completed',
-      offersCount: 5,
-    },
-  ];
+  // Initialize empty arrays for new users instead of dummy data
+  const mockLoans = [];
+  const mockOffers = [];
+  const mockServices = [];
 
   // Filter loans to only show ones created by the current user
   const userLoans = mockLoans.filter(loan => loan.createdBy === user?.id);
-
-  // Similarly for offers, only show ones relevant to the current user
-  const mockOffers = [
-    {
-      id: 1,
-      loanId: 1,
-      amount: 5000,
-      offerDate: '2023-10-16',
-      status: 'pending',
-      createdBy: 'other-user', // This would be filled with actual user ID in a real app
-    },
-    {
-      id: 2,
-      loanId: 3,
-      amount: 3500,
-      offerDate: '2023-11-01',
-      status: 'accepted',
-      createdBy: 'other-user',
-    },
-  ];
-
-  const mockServices = [
-    {
-      id: 1,
-      createdBy: user?.id,
-      title: 'Web Development',
-      description: 'Custom website development using React',
-      value: 500,
-    },
-    {
-      id: 2,
-      createdBy: user?.id,
-      title: 'Logo Design',
-      description: 'Professional logo design with unlimited revisions',
-      value: 250,
-    },
-  ];
 
   // Only show services created by the current user
   const userServices = mockServices.filter(service => service.createdBy === user?.id);
 
   const handleViewLoanDetails = (loanId) => {
+    // Navigate to the loan details page
     navigate(`/loans/${loanId}`);
   };
 
@@ -92,11 +41,15 @@ const Dashboard = () => {
   };
 
   const handleAcceptOffer = (offerId) => {
-    toast({
-      title: "Offer Accepted",
-      description: "You have accepted the offer. Lender has been notified.",
-    });
-    // In a real app, you would update the offer status in the database
+    // Navigate to loan details page for this offer (assuming offers have a loanId property)
+    const offer = mockOffers.find(o => o.id === offerId);
+    if (offer) {
+      toast({
+        title: "Offer Accepted",
+        description: "You have accepted the offer. Lender has been notified.",
+      });
+      navigate(`/loans/${offer.loanId}`);
+    }
   };
 
   const handleDeclineOffer = (offerId) => {
@@ -315,7 +268,13 @@ const Dashboard = () => {
                     <span className="text-sm text-gray-500">
                       For Loan Request #{offer.loanId}
                     </span>
-                    <Button variant="outline" size="sm">View Details</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleViewLoanDetails(offer.loanId)}
+                    >
+                      View Details
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -324,7 +283,7 @@ const Dashboard = () => {
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">You haven't made any offers yet</p>
-            <Button>Browse Loan Requests</Button>
+            <Button onClick={() => navigate('/loans')}>Browse Loan Requests</Button>
           </div>
         )}
       </TabsContent>
@@ -332,34 +291,51 @@ const Dashboard = () => {
       <TabsContent value="browse" className="space-y-6">
         <h3 className="text-xl font-semibold mb-6">Available Loan Requests</h3>
         
-        <div className="grid grid-cols-1 gap-6">
-          {mockLoans.map(loan => (
-            <Card key={loan.id} className="hover:shadow-elevation transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle>₹{loan.amount}</CardTitle>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    loan.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {loan.status}
+        {mockLoans.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6">
+            {mockLoans.map(loan => (
+              <Card key={loan.id} className="hover:shadow-elevation transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <CardTitle>₹{loan.amount}</CardTitle>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      loan.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {loan.status}
+                    </div>
                   </div>
-                </div>
-                <CardDescription>Requested on {loan.requestDate}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-sm text-gray-500">
-                    {loan.offersCount} Offers received
-                  </span>
-                  <div className="space-x-2">
-                    <Button variant="outline" size="sm">View Details</Button>
-                    <Button size="sm">Make Offer</Button>
+                  <CardDescription>Requested on {loan.requestDate}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm text-gray-500">
+                      {loan.offersCount} Offers received
+                    </span>
+                    <div className="space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewLoanDetails(loan.id)}
+                      >
+                        View Details
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleViewLoanDetails(loan.id)}
+                      >
+                        Make Offer
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No loan requests available at the moment</p>
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   );
@@ -384,7 +360,7 @@ const Dashboard = () => {
               <CardContent>
                 <div className="flex items-center">
                   <DollarSign className="h-5 w-5 text-primary mr-2" />
-                  <span className="text-2xl font-bold">₹7,500</span>
+                  <span className="text-2xl font-bold">₹0</span>
                 </div>
               </CardContent>
             </Card>
@@ -396,7 +372,7 @@ const Dashboard = () => {
               <CardContent>
                 <div className="flex items-center">
                   <HandCoins className="h-5 w-5 text-primary mr-2" />
-                  <span className="text-2xl font-bold">3</span>
+                  <span className="text-2xl font-bold">0</span>
                 </div>
               </CardContent>
             </Card>
@@ -408,8 +384,8 @@ const Dashboard = () => {
               <CardContent>
                 <div className="flex items-center">
                   <Star className="h-5 w-5 text-yellow-500 mr-2" />
-                  <span className="text-2xl font-bold">4.8</span>
-                  <span className="text-sm text-gray-500 ml-2">(12 reviews)</span>
+                  <span className="text-2xl font-bold">0</span>
+                  <span className="text-sm text-gray-500 ml-2">(0 reviews)</span>
                 </div>
               </CardContent>
             </Card>
