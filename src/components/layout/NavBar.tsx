@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { Menu, X, User, LogOut } from 'lucide-react';
@@ -26,14 +25,20 @@ const NavBar: React.FC = () => {
 
   const navLinks = [
     { name: 'How It Works', path: '/#how-it-works' },
-    { name: 'Loans', path: '/loans' },
   ];
+  
+  if (!isAuthenticated || (user?.user_metadata?.role === 'lender')) {
+    navLinks.push({ name: 'Loans', path: '/loans' });
+  }
+
+  if (isAuthenticated && user?.user_metadata?.role === 'borrower') {
+    navLinks.push({ name: 'My Offers', path: '/offers' });
+  }
 
   const authLinks = [
     { name: 'Dashboard', path: '/dashboard' },
   ];
 
-  // Access user metadata from user.user_metadata
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   const userRole = user?.user_metadata?.role || 'user';
 
@@ -43,7 +48,6 @@ const NavBar: React.FC = () => {
     }`}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link 
             to="/" 
             className="flex items-center font-display text-xl font-semibold text-primary"
@@ -51,7 +55,6 @@ const NavBar: React.FC = () => {
             BarterBank
           </Link>
 
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link
@@ -105,7 +108,6 @@ const NavBar: React.FC = () => {
             )}
           </nav>
 
-          {/* Mobile menu button */}
           <div className="md:hidden">
             <Button
               variant="ghost"
@@ -123,7 +125,6 @@ const NavBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Navigation */}
       {isMobileMenuOpen && (
         <div className="md:hidden glass animate-fade-in">
           <div className="px-4 pt-2 pb-3 space-y-1 sm:px-3">

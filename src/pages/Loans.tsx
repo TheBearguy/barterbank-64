@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,85 +10,73 @@ import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
 import { Search, SlidersHorizontal, Clock, Star, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Loans = () => {
   const { isAuthenticated, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAmount, setFilterAmount] = useState('all');
+  const [loans, setLoans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const mockLoans = [
-    {
-      id: 1,
-      borrower: {
-        name: 'Ravi Kumar',
-        rating: 4.8,
-        completedExchanges: 12,
-      },
-      amount: 5000,
-      description: 'Need funds for small business inventory. Can offer web development services or home-cooked meals in return.',
-      requestDate: '2023-10-15',
-      services: ['Web Development', 'Cooking'],
-      status: 'active',
-      offersCount: 3,
-    },
-    {
-      id: 2,
-      borrower: {
-        name: 'Priya Singh',
-        rating: 4.2,
-        completedExchanges: 5,
-      },
-      amount: 2000,
-      description: 'Personal emergency. Can offer graphic design services or handmade crafts as repayment.',
-      requestDate: '2023-11-05',
-      services: ['Graphic Design', 'Handicrafts'],
-      status: 'active',
-      offersCount: 1,
-    },
-    {
-      id: 3,
-      borrower: {
-        name: 'Ajay Sharma',
-        rating: 4.9,
-        completedExchanges: 18,
-      },
-      amount: 8000,
-      description: 'Need to pay medical bills. Can offer carpentry work, furniture repair or gardening services.',
-      requestDate: '2023-11-10',
-      services: ['Carpentry', 'Gardening'],
-      status: 'active',
-      offersCount: 5,
-    },
-    {
-      id: 4,
-      borrower: {
-        name: 'Meera Patel',
-        rating: 3.7,
-        completedExchanges: 3,
-      },
-      amount: 3500,
-      description: 'Need money for college fees. Can teach mathematics or physics to high school students.',
-      requestDate: '2023-11-12',
-      services: ['Tutoring: Mathematics', 'Tutoring: Physics'],
-      status: 'active',
-      offersCount: 0,
-    },
-  ];
+  // Redirect borrowers to their offers page
+  useEffect(() => {
+    if (isAuthenticated && user?.user_metadata?.role === 'borrower') {
+      navigate('/offers');
+    }
+  }, [isAuthenticated, user, navigate]);
 
-  const filteredLoans = mockLoans
+  // Fetch loans from Supabase
+  useEffect(() => {
+    const fetchLoans = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('loans')
+          .select(`
+            *,
+            borrower:profiles!borrower_id(name, id)
+          `)
+          .eq('status', 'pending');
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          setLoans(data);
+        }
+      } catch (error) {
+        console.error('Error fetching loans:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load loan requests',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLoans();
+  }, [toast]);
+
+  const filteredLoans = loans
     .filter(loan => {
       if (filterAmount === 'all') return true;
-      if (filterAmount === 'under2k') return loan.amount < 2000;
-      if (filterAmount === '2kto5k') return loan.amount >= 2000 && loan.amount <= 5000;
-      if (filterAmount === 'over5k') return loan.amount > 5000;
+      if (filterAmount === 'under2k') return parseFloat(loan.amount) < 2000;
+      if (filterAmount === '2kto5k') return parseFloat(loan.amount) >= 2000 && parseFloat(loan.amount) <= 5000;
+      if (filterAmount === 'over5k') return parseFloat(loan.amount) > 5000;
       return true;
     })
     .filter(loan => {
       if (!searchTerm) return true;
       return (
-        loan.borrower.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.services.some(service => service.toLowerCase().includes(searchTerm.toLowerCase()))
+        loan.borrower?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        loan.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     });
 
@@ -105,7 +93,7 @@ const Loans = () => {
               </p>
             </div>
             
-            {isAuthenticated && user?.role === 'borrower' && (
+            {isAuthenticated && user?.user_metadata?.role === 'borrower' && (
               <Link to="/create-loan" className="mt-4 md:mt-0">
                 <Button className="button-shine">
                   <span>Create Loan Request</span>
@@ -121,7 +109,7 @@ const Loans = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   type="text"
-                  placeholder="Search by name, skills or description..."
+                  placeholder="Search by name or description..."
                   className="pl-10"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -141,10 +129,6 @@ const Loans = () => {
                     <SelectItem value="over5k">Over ₹5,000</SelectItem>
                   </SelectContent>
                 </Select>
-                
-                <Button variant="outline">
-                  More Filters
-                </Button>
               </div>
             </div>
           </div>
@@ -157,7 +141,11 @@ const Loans = () => {
             </TabsList>
             
             <TabsContent value="all" className="space-y-6">
-              {filteredLoans.length > 0 ? (
+              {loading ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Loading loan requests...</p>
+                </div>
+              ) : filteredLoans.length > 0 ? (
                 <div className="grid grid-cols-1 gap-6">
                   {filteredLoans.map(loan => (
                     <Card key={loan.id} className="overflow-hidden hover:shadow-elevation transition-shadow">
@@ -168,7 +156,7 @@ const Loans = () => {
                               ₹{loan.amount}
                               <span className="ml-4 text-sm font-normal text-gray-500 flex items-center">
                                 <Clock className="h-4 w-4 mr-1" />
-                                {loan.requestDate}
+                                {new Date(loan.created_at).toLocaleDateString()}
                               </span>
                             </CardTitle>
                             <CardDescription className="mt-2">
@@ -184,36 +172,19 @@ const Loans = () => {
                         <div className="flex flex-col md:flex-row justify-between">
                           <div className="flex items-center mb-4 md:mb-0">
                             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
-                              {loan.borrower.name.charAt(0)}
+                              {loan.borrower?.name?.charAt(0) || '?'}
                             </div>
                             <div>
-                              <p className="font-medium">{loan.borrower.name}</p>
-                              <div className="flex items-center text-sm text-gray-500">
-                                <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                                <span>{loan.borrower.rating}</span>
-                                <span className="mx-2">•</span>
-                                <span>{loan.borrower.completedExchanges} exchanges</span>
-                              </div>
+                              <p className="font-medium">{loan.borrower?.name || 'Unknown'}</p>
                             </div>
                           </div>
                           
                           <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                            <div className="flex flex-wrap gap-2">
-                              {loan.services.map((service, index) => (
-                                <span 
-                                  key={index} 
-                                  className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-medium"
-                                >
-                                  {service}
-                                </span>
-                              ))}
-                            </div>
-                            
                             <div className="flex gap-3">
                               <Link to={`/loans/${loan.id}`}>
                                 <Button variant="outline" size="sm">View Details</Button>
                               </Link>
-                              {isAuthenticated && user?.role === 'lender' && (
+                              {isAuthenticated && user?.user_metadata?.role === 'lender' && (
                                 <Link to={`/loans/${loan.id}`}>
                                   <Button size="sm">Make Offer</Button>
                                 </Link>
@@ -235,11 +206,11 @@ const Loans = () => {
             <TabsContent value="recent">
               <div className="grid grid-cols-1 gap-6">
                 {filteredLoans
-                  .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                   .slice(0, 3)
                   .map(loan => (
                     <Card key={loan.id} className="overflow-hidden hover:shadow-elevation transition-shadow">
-                      {/* Card content structure similar to above */}
+                      {/* Similar card content as above */}
                       <CardHeader className="pb-2 border-b">
                         <div className="flex justify-between items-start">
                           <div>
@@ -247,7 +218,7 @@ const Loans = () => {
                               ₹{loan.amount}
                               <span className="ml-4 text-sm font-normal text-gray-500 flex items-center">
                                 <Clock className="h-4 w-4 mr-1" />
-                                {loan.requestDate}
+                                {new Date(loan.created_at).toLocaleDateString()}
                               </span>
                             </CardTitle>
                             <CardDescription className="mt-2">
@@ -263,36 +234,19 @@ const Loans = () => {
                         <div className="flex flex-col md:flex-row justify-between">
                           <div className="flex items-center mb-4 md:mb-0">
                             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
-                              {loan.borrower.name.charAt(0)}
+                              {loan.borrower?.name?.charAt(0) || '?'}
                             </div>
                             <div>
-                              <p className="font-medium">{loan.borrower.name}</p>
-                              <div className="flex items-center text-sm text-gray-500">
-                                <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                                <span>{loan.borrower.rating}</span>
-                                <span className="mx-2">•</span>
-                                <span>{loan.borrower.completedExchanges} exchanges</span>
-                              </div>
+                              <p className="font-medium">{loan.borrower?.name || 'Unknown'}</p>
                             </div>
                           </div>
                           
                           <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                            <div className="flex flex-wrap gap-2">
-                              {loan.services.map((service, index) => (
-                                <span 
-                                  key={index} 
-                                  className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-medium"
-                                >
-                                  {service}
-                                </span>
-                              ))}
-                            </div>
-                            
                             <div className="flex gap-3">
                               <Link to={`/loans/${loan.id}`}>
                                 <Button variant="outline" size="sm">View Details</Button>
                               </Link>
-                              {isAuthenticated && user?.role === 'lender' && (
+                              {isAuthenticated && user?.user_metadata?.role === 'lender' && (
                                 <Link to={`/loans/${loan.id}`}>
                                   <Button size="sm">Make Offer</Button>
                                 </Link>
@@ -307,76 +261,8 @@ const Loans = () => {
             </TabsContent>
             
             <TabsContent value="popular">
-              <div className="grid grid-cols-1 gap-6">
-                {filteredLoans
-                  .sort((a, b) => b.offersCount - a.offersCount)
-                  .slice(0, 3)
-                  .map(loan => (
-                    <Card key={loan.id} className="overflow-hidden hover:shadow-elevation transition-shadow">
-                      {/* Card content structure similar to above */}
-                      <CardHeader className="pb-2 border-b">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="flex items-center">
-                              ₹{loan.amount}
-                              <span className="ml-4 text-sm font-normal text-gray-500 flex items-center">
-                                <Clock className="h-4 w-4 mr-1" />
-                                {loan.requestDate}
-                              </span>
-                            </CardTitle>
-                            <CardDescription className="mt-2">
-                              {loan.description}
-                            </CardDescription>
-                          </div>
-                          <div className={`px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800`}>
-                            {loan.status}
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-4">
-                        <div className="flex flex-col md:flex-row justify-between">
-                          <div className="flex items-center mb-4 md:mb-0">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
-                              {loan.borrower.name.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="font-medium">{loan.borrower.name}</p>
-                              <div className="flex items-center text-sm text-gray-500">
-                                <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                                <span>{loan.borrower.rating}</span>
-                                <span className="mx-2">•</span>
-                                <span>{loan.borrower.completedExchanges} exchanges</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                            <div className="flex flex-wrap gap-2">
-                              {loan.services.map((service, index) => (
-                                <span 
-                                  key={index} 
-                                  className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 text-xs font-medium"
-                                >
-                                  {service}
-                                </span>
-                              ))}
-                            </div>
-                            
-                            <div className="flex gap-3">
-                              <Link to={`/loans/${loan.id}`}>
-                                <Button variant="outline" size="sm">View Details</Button>
-                              </Link>
-                              {isAuthenticated && user?.role === 'lender' && (
-                                <Link to={`/loans/${loan.id}`}>
-                                  <Button size="sm">Make Offer</Button>
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+              <div className="text-center py-12">
+                <p className="text-gray-500">Coming soon - popularity ranking based on offer count</p>
               </div>
             </TabsContent>
           </Tabs>

@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard";
 import Loans from "./pages/Loans";
 import LoanDetails from "./pages/LoanDetails";
 import CreateLoan from "./pages/CreateLoan";
+import Offers from "./pages/Offers";
 import NotFound from "./pages/NotFound";
 
 // Add framer-motion
@@ -98,6 +99,16 @@ const App = () => (
                   transition={{ duration: 0.3 }}
                 >
                   <CreateLoan />
+                </motion.div>
+              } />
+              <Route path="/offers" element={
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Offers />
                 </motion.div>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
