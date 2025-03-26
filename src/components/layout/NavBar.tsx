@@ -33,6 +33,10 @@ const NavBar: React.FC = () => {
     { name: 'Dashboard', path: '/dashboard' },
   ];
 
+  // Access user metadata from user.user_metadata
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+  const userRole = user?.user_metadata?.role || 'user';
+
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled ? 'bg-white/80 dark:bg-black/80 backdrop-blur-lg shadow-sm' : 'bg-transparent'
@@ -76,7 +80,7 @@ const NavBar: React.FC = () => {
                     <User size={18} />
                   </div>
                   <span className="text-sm font-medium">
-                    {user?.name} ({user?.role})
+                    {userName} ({userRole})
                   </span>
                 </div>
                 <Button 
@@ -151,7 +155,7 @@ const NavBar: React.FC = () => {
                       <User size={18} />
                     </div>
                     <span className="text-sm font-medium">
-                      {user?.name} ({user?.role})
+                      {userName} ({userRole})
                     </span>
                   </div>
                 </div>
