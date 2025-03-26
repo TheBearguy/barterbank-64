@@ -1,19 +1,19 @@
+
 import React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
+import { DollarSign, HandCoins, Star } from 'lucide-react';
 import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/context/AuthContext';
-import { ArrowRight, Clock, DollarSign, HandCoins, Send, Star, User } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import StatCard from '@/components/dashboard/StatCard';
+import BorrowerTabs from '@/components/dashboard/BorrowerTabs';
+import LenderTabs from '@/components/dashboard/LenderTabs';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 const Dashboard = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { userLoans, offers, services, availableLoans, loading } = useDashboardData();
 
   // Redirect if not logged in
   if (!isAuthenticated) {
@@ -28,270 +28,6 @@ const Dashboard = () => {
     navigate(`/loans/${loanId}`);
   };
 
-  const renderBorrowerDashboard = () => (
-    <Tabs defaultValue="requests" className="w-full">
-      <TabsList className="grid grid-cols-3 mb-8">
-        <TabsTrigger value="requests">Your Requests</TabsTrigger>
-        <TabsTrigger value="offers">Received Offers</TabsTrigger>
-        <TabsTrigger value="services">My Services</TabsTrigger>
-      </TabsList>
-      
-      <TabsContent value="requests" className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold">Your Loan Requests</h3>
-          <Button onClick={handleCreateLoan}>
-            <span>Create New Request</span>
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-        
-        {userLoans.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {userLoans.map(loan => (
-              <Card key={loan.id} className="hover:shadow-elevation transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle>₹{loan.amount}</CardTitle>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      loan.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {loan.status}
-                    </div>
-                  </div>
-                  <CardDescription className="mt-2">Requested on {loan.requestDate}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-sm text-gray-500">
-                      {loan.offersCount} Offers received
-                    </span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleViewLoanDetails(loan.id)}
-                    >
-                      View Details
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">You haven't created any loan requests yet</p>
-            <Button onClick={handleCreateLoan}>Create Your First Request</Button>
-          </div>
-        )}
-      </TabsContent>
-      
-      <TabsContent value="offers" className="space-y-6">
-        <h3 className="text-xl font-semibold mb-6">Offers on Your Requests</h3>
-        
-        {mockOffers.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6">
-            {mockOffers.map(offer => (
-              <Card key={offer.id} className="hover:shadow-elevation transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle>₹{offer.amount}</CardTitle>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      offer.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                    }`}>
-                      {offer.status}
-                    </div>
-                  </div>
-                  <CardDescription className="mt-2">Offered on {offer.offerDate}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-sm text-gray-500">
-                      For Loan Request #{offer.loanId}
-                    </span>
-                    <div className="space-x-2">
-                      {offer.status === 'pending' && (
-                        <>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleDeclineOffer(offer.id)}
-                          >
-                            Decline
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleAcceptOffer(offer.id)}
-                          >
-                            Accept
-                          </Button>
-                        </>
-                      )}
-                      {offer.status === 'accepted' && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleViewLoanDetails(offer.loanId)}
-                        >
-                          View Details
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">You haven't received any offers yet</p>
-          </div>
-        )}
-      </TabsContent>
-      
-      <TabsContent value="services" className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold">Your Services & Products</h3>
-          <Button onClick={handleAddService}>
-            <span>Add New Service</span>
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-        
-        {userServices.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {userServices.map(service => (
-              <Card key={service.id} className="hover:shadow-elevation transition-shadow">
-                <CardHeader>
-                  <CardTitle>{service.title}</CardTitle>
-                  <CardDescription>{service.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">₹{service.value}</span>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleEditService(service.id)}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">You haven't added any services or products yet</p>
-            <Button onClick={handleAddService}>Add Your First Service</Button>
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
-  );
-
-  const renderLenderDashboard = () => (
-    <Tabs defaultValue="offers" className="w-full">
-      <TabsList className="grid grid-cols-2 mb-8">
-        <TabsTrigger value="offers">My Offers</TabsTrigger>
-        <TabsTrigger value="browse">Browse Requests</TabsTrigger>
-      </TabsList>
-      
-      <TabsContent value="offers" className="space-y-6">
-        <h3 className="text-xl font-semibold mb-6">Your Active Offers</h3>
-        
-        {mockOffers.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6">
-            {mockOffers.map(offer => (
-              <Card key={offer.id} className="hover:shadow-elevation transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle>₹{offer.amount}</CardTitle>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      offer.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                    }`}>
-                      {offer.status}
-                    </div>
-                  </div>
-                  <CardDescription>Sent on {offer.offerDate}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-sm text-gray-500">
-                      For Loan Request #{offer.loanId}
-                    </span>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleViewLoanDetails(offer.loanId)}
-                    >
-                      View Details
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">You haven't made any offers yet</p>
-            <Button onClick={() => navigate('/loans')}>Browse Loan Requests</Button>
-          </div>
-        )}
-      </TabsContent>
-      
-      <TabsContent value="browse" className="space-y-6">
-        <h3 className="text-xl font-semibold mb-6">Available Loan Requests</h3>
-        
-        {mockLoans.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6">
-            {mockLoans.map(loan => (
-              <Card key={loan.id} className="hover:shadow-elevation transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle>₹{loan.amount}</CardTitle>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      loan.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {loan.status}
-                    </div>
-                  </div>
-                  <CardDescription>Requested on {loan.requestDate}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-sm text-gray-500">
-                      {loan.offersCount} Offers received
-                    </span>
-                    <div className="space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewLoanDetails(loan.id)}
-                      >
-                        View Details
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleViewLoanDetails(loan.id)}
-                      >
-                        Make Offer
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No loan requests available at the moment</p>
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
-  );
-
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
@@ -305,45 +41,45 @@ const Dashboard = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">Total Value</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <DollarSign className="h-5 w-5 text-primary mr-2" />
-                  <span className="text-2xl font-bold">₹0</span>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Total Value"
+              value="₹0"
+              icon={DollarSign}
+            />
             
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">Active Exchanges</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <HandCoins className="h-5 w-5 text-primary mr-2" />
-                  <span className="text-2xl font-bold">0</span>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Active Exchanges"
+              value="0"
+              icon={HandCoins}
+            />
             
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">Rating</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center">
-                  <Star className="h-5 w-5 text-yellow-500 mr-2" />
-                  <span className="text-2xl font-bold">0</span>
-                  <span className="text-sm text-gray-500 ml-2">(0 reviews)</span>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard
+              title="Rating"
+              value={<span>0 <span className="text-sm text-gray-500 ml-2">(0 reviews)</span></span>}
+              icon={Star}
+              iconColor="text-yellow-500"
+            />
           </div>
           
-          {user?.user_metadata?.role === 'borrower' ? renderBorrowerDashboard() : renderLenderDashboard()}
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Loading...</p>
+            </div>
+          ) : user?.user_metadata?.role === 'borrower' ? (
+            <BorrowerTabs
+              userLoans={userLoans}
+              offers={offers}
+              services={services}
+              onCreateLoan={handleCreateLoan}
+              onViewLoanDetails={handleViewLoanDetails}
+            />
+          ) : (
+            <LenderTabs
+              offers={offers}
+              availableLoans={availableLoans}
+              onViewLoanDetails={handleViewLoanDetails}
+            />
+          )}
         </div>
       </div>
       <Footer />
