@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { useAuth, UserRole } from '@/context/AuthContext';
+import { AlertCircle } from 'lucide-react';
 
 type AuthFormMode = 'login' | 'register';
 
@@ -23,10 +24,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('borrower');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
       if (mode === 'login') {
@@ -34,11 +37,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
         toast.success('Logged in successfully');
       } else {
         await register(name, email, password, role);
-        toast.success('Registered successfully');
+        toast.success('Registered successfully. Check your email for verification.');
       }
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Authentication failed');
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -56,6 +61,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
             : 'Join BarterBank to exchange value flexibly'}
         </p>
       </div>
+
+      {error && (
+        <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2 text-red-600">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {mode === 'register' && (
@@ -96,6 +108,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
             required
             className="glass-input"
             placeholder="Enter your password"
+            minLength={6}
           />
         </div>
 
