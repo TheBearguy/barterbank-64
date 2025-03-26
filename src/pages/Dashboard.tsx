@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowRight, Clock, DollarSign, HandCoins, Send, Star, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
   const { isAuthenticated, user } = useAuth();
@@ -20,71 +20,23 @@ const Dashboard = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Initialize empty arrays for new users instead of dummy data
-  const mockLoans = [];
-  const mockOffers = [];
-  const mockServices = [];
-
-  // Filter loans to only show ones created by the current user
-  const userLoans = mockLoans.filter(loan => loan.createdBy === user?.id);
-
-  // Only show services created by the current user
-  const userServices = mockServices.filter(service => service.createdBy === user?.id);
-
-  const handleViewLoanDetails = (loanId) => {
-    // Navigate to the loan details page
-    navigate(`/loans/${loanId}`);
-  };
-
   const handleCreateLoan = () => {
     navigate('/create-loan');
   };
 
-  const handleAcceptOffer = (offerId) => {
-    // Navigate to loan details page for this offer (assuming offers have a loanId property)
-    const offer = mockOffers.find(o => o.id === offerId);
-    if (offer) {
-      toast({
-        title: "Offer Accepted",
-        description: "You have accepted the offer. Lender has been notified.",
-      });
-      navigate(`/loans/${offer.loanId}`);
-    }
-  };
-
-  const handleDeclineOffer = (offerId) => {
-    toast({
-      title: "Offer Declined",
-      description: "You have declined the offer. Lender has been notified.",
-    });
-    // In a real app, you would update the offer status in the database
-  };
-
-  const handleEditService = (serviceId) => {
-    toast({
-      title: "Edit Service",
-      description: "You can edit your service details here.",
-    });
-    // In a real app, navigate to service edit page or open a modal
-  };
-
-  const handleAddService = () => {
-    toast({
-      title: "Add Service",
-      description: "Add a new service or product you can offer.",
-    });
-    // In a real app, navigate to add service page or open a modal
+  const handleViewLoanDetails = (loanId: string) => {
+    navigate(`/loans/${loanId}`);
   };
 
   const renderBorrowerDashboard = () => (
-    <Tabs defaultValue="loans" className="w-full">
+    <Tabs defaultValue="requests" className="w-full">
       <TabsList className="grid grid-cols-3 mb-8">
-        <TabsTrigger value="loans">My Loan Requests</TabsTrigger>
+        <TabsTrigger value="requests">Your Requests</TabsTrigger>
         <TabsTrigger value="offers">Received Offers</TabsTrigger>
         <TabsTrigger value="services">My Services</TabsTrigger>
       </TabsList>
       
-      <TabsContent value="loans" className="space-y-6">
+      <TabsContent value="requests" className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold">Your Loan Requests</h3>
           <Button onClick={handleCreateLoan}>
@@ -348,7 +300,7 @@ const Dashboard = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-gray-600 dark:text-gray-300 mt-2">
-              Manage your {user?.role === 'borrower' ? 'loan requests and services' : 'offers and opportunities'}
+              Manage your {user?.user_metadata?.role === 'borrower' ? 'loan requests and services' : 'offers and opportunities'}
             </p>
           </div>
           
@@ -391,7 +343,7 @@ const Dashboard = () => {
             </Card>
           </div>
           
-          {user?.role === 'borrower' ? renderBorrowerDashboard() : renderLenderDashboard()}
+          {user?.user_metadata?.role === 'borrower' ? renderBorrowerDashboard() : renderLenderDashboard()}
         </div>
       </div>
       <Footer />
