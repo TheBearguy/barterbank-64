@@ -22,6 +22,7 @@ const Dashboard = () => {
   }
 
   const handleCreateLoan = () => {
+    console.log("Dashboard: navigating to create-loan");
     navigate('/create-loan');
   };
 

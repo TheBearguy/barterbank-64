@@ -12,6 +12,7 @@ import Footer from '@/components/layout/Footer';
 import { Plus, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const CreateLoan = () => {
   const { isAuthenticated, user } = useAuth();
@@ -24,10 +25,12 @@ const CreateLoan = () => {
   const [currentService, setCurrentService] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Redirect if not logged in or not a borrower
-  if (!isAuthenticated || user?.role !== 'borrower') {
+  // Redirect if not logged in
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
+  console.log("CreateLoan component rendered, user:", user);
 
   const handleAddService = () => {
     if (currentService.trim() && !services.includes(currentService.trim())) {
@@ -71,9 +74,43 @@ const CreateLoan = () => {
     }
 
     setLoading(true);
+    
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log("Submitting loan request to database...");
+      
+      // Create the loan record in the database
+      const { data: loanData, error: loanError } = await supabase
+        .from('loans')
+        .insert({
+          amount: parseFloat(amount),
+          description: description,
+          borrower_id: user?.id,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (loanError) {
+        throw loanError;
+      }
+
+      console.log("Loan created successfully:", loanData);
+
+      // Add services to the service table
+      if (loanData) {
+        for (const serviceName of services) {
+          const { error: serviceError } = await supabase
+            .from('services')
+            .insert({
+              name: serviceName,
+              loan_id: loanData.id
+            });
+
+          if (serviceError) {
+            console.error("Error creating service:", serviceError);
+          }
+        }
+      }
       
       toast({
         title: "Loan request created",
@@ -82,6 +119,7 @@ const CreateLoan = () => {
       
       navigate('/dashboard');
     } catch (error) {
+      console.error("Error creating loan:", error);
       toast({
         title: "Failed to create loan request",
         description: "An error occurred while creating your loan request",

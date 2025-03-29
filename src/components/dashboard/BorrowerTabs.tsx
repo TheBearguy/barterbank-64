@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import OfferCard from './OfferCard';
 import ServiceCard from './ServiceCard';
 import { useToast } from '@/hooks/use-toast';
 import { useLoansData } from '@/hooks/useLoansData';
+import { useNavigate } from 'react-router-dom';
 
 interface Loan {
   id: string;
@@ -36,8 +36,16 @@ const BorrowerTabs = ({
   onViewLoanDetails
 }: BorrowerTabsProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { userLoans, receivedOffers, loading, updateOfferStatus } = useLoansData();
   
+  const handleCreateLoan = () => {
+    console.log("Create loan button clicked");
+    // Use both the prop and direct navigation for redundancy
+    onCreateLoan();
+    navigate('/create-loan');
+  };
+
   const handleAcceptOffer = async (offerId: string) => {
     const success = await updateOfferStatus(offerId, 'accepted');
     if (success) {
@@ -89,7 +97,7 @@ const BorrowerTabs = ({
       <TabsContent value="requests" className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold">Your Loan Requests</h3>
-          <Button onClick={onCreateLoan}>
+          <Button onClick={handleCreateLoan}>
             <span>Create New Request</span>
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
@@ -116,7 +124,7 @@ const BorrowerTabs = ({
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">You haven't created any loan requests yet</p>
-            <Button onClick={onCreateLoan}>Create Your First Request</Button>
+            <Button onClick={handleCreateLoan}>Create Your First Request</Button>
           </div>
         )}
       </TabsContent>
