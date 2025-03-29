@@ -32,24 +32,40 @@ const Offers = () => {
     navigate(`/loans/${loanId}`);
   };
 
-  const handleAcceptOffer = async (offerId: string) => {
-    const success = await updateOfferStatus(offerId, 'accepted');
+  const handleAcceptOffer = async (offerId: string, note?: string) => {
+    const success = await updateOfferStatus(offerId, 'accepted', note);
     if (success) {
       toast({
         title: "Offer Accepted",
-        description: "The loan offer has been accepted and the loan is now active.",
+        description: note 
+          ? "The loan offer has been accepted with your note. Lender has been notified." 
+          : "The loan offer has been accepted. Lender has been notified.",
       });
       // Refresh the page to update the data
       window.location.reload();
     }
   };
 
-  const handleDeclineOffer = async (offerId: string) => {
-    const success = await updateOfferStatus(offerId, 'rejected');
+  const handleDeclineOffer = async (offerId: string, note?: string) => {
+    const success = await updateOfferStatus(offerId, 'rejected', note);
     if (success) {
       toast({
         title: "Offer Declined",
-        description: "The loan offer has been declined.",
+        description: note 
+          ? "The loan offer has been declined with your note. Lender has been notified." 
+          : "The loan offer has been declined. Lender has been notified.",
+      });
+      // Refresh the page to update the data
+      window.location.reload();
+    }
+  };
+
+  const handleCounterOffer = async (offerId: string, amount: number, note: string) => {
+    const success = await updateOfferStatus(offerId, 'counter', note);
+    if (success) {
+      toast({
+        title: "Counter Offer Sent",
+        description: "Your counter offer has been sent to the lender.",
       });
       // Refresh the page to update the data
       window.location.reload();
@@ -170,9 +186,11 @@ const Offers = () => {
                       loanId={offer.loan_id}
                       lenderName={offer.lender?.name || "Unknown Lender"}
                       message={offer.message || ""}
+                      borrowerNote={offer.borrower_note}
                       onViewDetails={handleViewLoanDetails}
                       onAccept={handleAcceptOffer}
                       onDecline={handleDeclineOffer}
+                      onCounter={handleCounterOffer}
                     />
                   ))}
                 </div>

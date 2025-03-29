@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +29,7 @@ export interface Offer {
   lender?: {
     name: string;
   };
+  borrower_note?: string;
 }
 
 export function useLoansData() {
@@ -52,9 +52,7 @@ export function useLoansData() {
         setLoading(true);
         const userRole = user?.user_metadata?.role;
 
-        // If user is a borrower, fetch their loans and any offers on those loans
         if (userRole === 'borrower') {
-          // Fetch loans created by this borrower
           const { data: loans, error: loansError } = await supabase
             .from('loans')
             .select(`
@@ -68,7 +66,6 @@ export function useLoansData() {
           setUserLoans(loans || []);
 
           if (loans && loans.length > 0) {
-            // Fetch offers made on the borrower's loans
             const loanIds = loans.map(loan => loan.id);
             const { data: offers, error: offersError } = await supabase
               .from('offers')
@@ -81,10 +78,7 @@ export function useLoansData() {
             if (offersError) throw offersError;
             setReceivedOffers(offers || []);
           }
-        } 
-        // If user is a lender, fetch available loans and their offers
-        else if (userRole === 'lender') {
-          // Fetch all available loans
+        } else if (userRole === 'lender') {
           const { data: loans, error: loansError } = await supabase
             .from('loans')
             .select(`
@@ -96,7 +90,6 @@ export function useLoansData() {
           if (loansError) throw loansError;
           setAvailableLoans(loans || []);
 
-          // Fetch offers made by this lender
           const { data: offers, error: offersError } = await supabase
             .from('offers')
             .select(`
@@ -152,18 +145,23 @@ export function useLoansData() {
     }
   };
 
-  const updateOfferStatus = async (offerId: string, status: 'accepted' | 'rejected' | 'counter') => {
+  const updateOfferStatus = async (offerId: string, status: 'accepted' | 'rejected' | 'counter', borrowerNote?: string) => {
     try {
+      console.log(`Updating offer ${offerId} to status: ${status}`);
+      
+      const updateData: { status: string; borrower_note?: string } = { status };
+      if (borrowerNote) {
+        updateData.borrower_note = borrowerNote;
+      }
+      
       const { error } = await supabase
         .from('offers')
-        .update({ status })
+        .update(updateData)
         .eq('id', offerId);
 
       if (error) throw error;
 
-      // If offer is accepted, update loan status
       if (status === 'accepted') {
-        // Find the offer to get the loan_id and lender_id
         const { data: offerData } = await supabase
           .from('offers')
           .select('loan_id, lender_id')
@@ -171,7 +169,8 @@ export function useLoansData() {
           .single();
 
         if (offerData) {
-          // Update the loan status and lender_id
+          console.log(`Updating loan ${offerData.loan_id} to active with lender ${offerData.lender_id}`);
+          
           const { error: loanError } = await supabase
             .from('loans')
             .update({ 
@@ -180,7 +179,20 @@ export function useLoansData() {
             })
             .eq('id', offerData.loan_id);
 
-          if (loanError) throw loanError;
+          if (loanError) {
+            console.error("Error updating loan:", loanError);
+            throw loanError;
+          }
+          
+          const { error: rejectError } = await supabase
+            .from('offers')
+            .update({ status: 'rejected' })
+            .eq('loan_id', offerData.loan_id)
+            .neq('id', offerId);
+            
+          if (rejectError) {
+            console.error("Error rejecting other offers:", rejectError);
+          }
         }
       }
 

@@ -1,7 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { IndianRupee, MessageSquare } from 'lucide-react';
 
 interface OfferCardProps {
   id: string;
@@ -11,9 +15,11 @@ interface OfferCardProps {
   loanId: string;
   lenderName?: string;
   message?: string;
+  borrowerNote?: string;
   onViewDetails: (id: string) => void;
-  onAccept?: (id: string) => void;
-  onDecline?: (id: string) => void;
+  onAccept?: (id: string, note?: string) => void;
+  onDecline?: (id: string, note?: string) => void;
+  onCounter?: (id: string, amount: number, note: string) => void;
 }
 
 const OfferCard = ({ 
@@ -24,10 +30,43 @@ const OfferCard = ({
   loanId, 
   lenderName,
   message,
+  borrowerNote,
   onViewDetails,
   onAccept,
-  onDecline 
+  onDecline,
+  onCounter
 }: OfferCardProps) => {
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [note, setNote] = useState('');
+  const [counterAmount, setCounterAmount] = useState(amount.toString());
+  const [counterNote, setCounterNote] = useState('');
+  const [isCounterPopoverOpen, setIsCounterPopoverOpen] = useState(false);
+
+  const handleAcceptWithNote = () => {
+    if (onAccept) {
+      onAccept(id, note);
+      setShowNoteInput(false);
+      setNote('');
+    }
+  };
+
+  const handleDeclineWithNote = () => {
+    if (onDecline) {
+      onDecline(id, note);
+      setShowNoteInput(false);
+      setNote('');
+    }
+  };
+
+  const handleCounterOffer = () => {
+    if (onCounter && parseFloat(counterAmount) > 0) {
+      onCounter(id, parseFloat(counterAmount), counterNote);
+      setIsCounterPopoverOpen(false);
+      setCounterAmount('');
+      setCounterNote('');
+    }
+  };
+
   return (
     <Card className="hover:shadow-elevation transition-shadow">
       <CardHeader className="pb-2">
@@ -37,6 +76,7 @@ const OfferCard = ({
             status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
             status === 'accepted' ? 'bg-green-100 text-green-800' :
             status === 'rejected' ? 'bg-red-100 text-red-800' :
+            status === 'counter' ? 'bg-blue-100 text-blue-800' :
             'bg-blue-100 text-blue-800'
           }`}>
             {status}
@@ -53,13 +93,88 @@ const OfferCard = ({
             <p className="italic">{message}</p>
           </div>
         )}
+        
+        {borrowerNote && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-md text-gray-700 text-sm">
+            <h4 className="font-semibold mb-1 text-blue-800">Your response:</h4>
+            <p className="italic">{borrowerNote}</p>
+          </div>
+        )}
+        
+        {showNoteInput && (
+          <div className="mb-4 space-y-2">
+            <Textarea 
+              placeholder="Add a note to the lender..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="w-full"
+            />
+            <div className="flex justify-end space-x-2">
+              <Button size="sm" variant="outline" onClick={() => setShowNoteInput(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleAcceptWithNote} className="bg-green-600 hover:bg-green-700">Accept</Button>
+              <Button size="sm" variant="destructive" onClick={handleDeclineWithNote}>Decline</Button>
+            </div>
+          </div>
+        )}
+        
         <div className="flex justify-between items-center mt-2">
           <span className="text-sm text-gray-500">
             For Loan Request #{loanId.substring(0, 8)}
           </span>
           <div className="space-x-2">
-            {status === 'pending' && onAccept && onDecline && (
+            {status === 'pending' && onAccept && onDecline && onCounter && (
               <>
+                <Popover open={isCounterPopoverOpen} onOpenChange={setIsCounterPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                    >
+                      Counter
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Make Counter Offer</h4>
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          <Input
+                            type="number"
+                            placeholder="Amount"
+                            className="pl-10"
+                            value={counterAmount}
+                            onChange={(e) => setCounterAmount(e.target.value)}
+                          />
+                        </div>
+                        <Textarea
+                          placeholder="Add details about your counter offer..."
+                          value={counterNote}
+                          onChange={(e) => setCounterNote(e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => setIsCounterPopoverOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleCounterOffer}>
+                          Send Counter
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowNoteInput(true)}
+                >
+                  <MessageSquare className="mr-1 h-4 w-4" />
+                  With Note
+                </Button>
+                
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -67,6 +182,7 @@ const OfferCard = ({
                 >
                   Decline
                 </Button>
+                
                 <Button 
                   size="sm" 
                   onClick={() => onAccept(id)}

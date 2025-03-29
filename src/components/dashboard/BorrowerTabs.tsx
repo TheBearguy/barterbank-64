@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -46,24 +47,41 @@ const BorrowerTabs = ({
     navigate('/create-loan');
   };
 
-  const handleAcceptOffer = async (offerId: string) => {
-    const success = await updateOfferStatus(offerId, 'accepted');
+  const handleAcceptOffer = async (offerId: string, note?: string) => {
+    const success = await updateOfferStatus(offerId, 'accepted', note);
     if (success) {
       toast({
         title: "Offer Accepted",
-        description: "You have accepted the offer. Lender has been notified.",
+        description: note 
+          ? "You have accepted the offer with a note. Lender has been notified." 
+          : "You have accepted the offer. Lender has been notified.",
       });
       // Refresh the page to update data
       window.location.reload();
     }
   };
 
-  const handleDeclineOffer = async (offerId: string) => {
-    const success = await updateOfferStatus(offerId, 'rejected');
+  const handleDeclineOffer = async (offerId: string, note?: string) => {
+    const success = await updateOfferStatus(offerId, 'rejected', note);
     if (success) {
       toast({
         title: "Offer Declined",
-        description: "You have declined the offer. Lender has been notified.",
+        description: note 
+          ? "You have declined the offer with a note. Lender has been notified." 
+          : "You have declined the offer. Lender has been notified.",
+      });
+      // Refresh the page to update data
+      window.location.reload();
+    }
+  };
+
+  const handleCounterOffer = async (offerId: string, amount: number, note: string) => {
+    // First, update the original offer status to 'counter'
+    const success = await updateOfferStatus(offerId, 'counter', note);
+    if (success) {
+      toast({
+        title: "Counter Offer Sent",
+        description: "Your counter offer has been sent to the lender.",
       });
       // Refresh the page to update data
       window.location.reload();
@@ -148,9 +166,11 @@ const BorrowerTabs = ({
                 loanId={offer.loan_id}
                 lenderName={offer.lender?.name || "Unknown Lender"}
                 message={offer.message || ""}
+                borrowerNote={offer.borrower_note}
                 onViewDetails={onViewLoanDetails}
                 onAccept={handleAcceptOffer}
                 onDecline={handleDeclineOffer}
+                onCounter={handleCounterOffer}
               />
             ))}
           </div>
