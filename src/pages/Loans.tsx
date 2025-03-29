@@ -8,17 +8,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
-import { Search, SlidersHorizontal, Clock, Star, ArrowRight } from 'lucide-react';
+import { Search, SlidersHorizontal, Clock, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLoansData } from '@/hooks/useLoansData';
 
 const Loans = () => {
   const { isAuthenticated, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAmount, setFilterAmount] = useState('all');
-  const [loans, setLoans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { availableLoans, loading } = useLoansData();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -26,50 +25,17 @@ const Loans = () => {
   useEffect(() => {
     if (isAuthenticated && user?.user_metadata?.role === 'borrower') {
       navigate('/offers');
+    } else if (!isAuthenticated) {
+      navigate('/login');
     }
   }, [isAuthenticated, user, navigate]);
 
-  // Fetch loans from Supabase
-  useEffect(() => {
-    const fetchLoans = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('loans')
-          .select(`
-            *,
-            borrower:profiles!borrower_id(name, id)
-          `)
-          .eq('status', 'pending');
-
-        if (error) {
-          throw error;
-        }
-
-        if (data) {
-          setLoans(data);
-        }
-      } catch (error) {
-        console.error('Error fetching loans:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load loan requests',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLoans();
-  }, [toast]);
-
-  const filteredLoans = loans
+  const filteredLoans = availableLoans
     .filter(loan => {
       if (filterAmount === 'all') return true;
-      if (filterAmount === 'under2k') return parseFloat(loan.amount) < 2000;
-      if (filterAmount === '2kto5k') return parseFloat(loan.amount) >= 2000 && parseFloat(loan.amount) <= 5000;
-      if (filterAmount === 'over5k') return parseFloat(loan.amount) > 5000;
+      if (filterAmount === 'under2k') return parseFloat(loan.amount.toString()) < 2000;
+      if (filterAmount === '2kto5k') return parseFloat(loan.amount.toString()) >= 2000 && parseFloat(loan.amount.toString()) <= 5000;
+      if (filterAmount === 'over5k') return parseFloat(loan.amount.toString()) > 5000;
       return true;
     })
     .filter(loan => {

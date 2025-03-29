@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import NavBar from '@/components/layout/NavBar';
@@ -8,6 +8,7 @@ import PaymentDialog from '@/components/loans/PaymentDialog';
 import CustomOfferDialog from '@/components/loans/CustomOfferDialog';
 import NegotiationDialog from '@/components/loans/NegotiationDialog';
 import RatingDialog from '@/components/loans/RatingDialog';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Card,
   CardContent,
@@ -41,128 +42,19 @@ import {
   ThumbsUp
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-const getLoanDetails = (id: string) => {
-  const mockLoans = [
-    {
-      id: '1',
-      borrower: {
-        name: 'Ravi Kumar',
-        rating: 4.8,
-        completedExchanges: 12,
-        profileImage: null,
-      },
-      amount: 5000,
-      description: 'Need funds for small business inventory. Can offer web development services or home-cooked meals in return.',
-      requestDate: '2023-10-15',
-      services: ['Web Development', 'Cooking'],
-      status: 'active',
-      offersCount: 3,
-      timeline: [
-        { date: '2023-10-15', event: 'Loan request created' },
-        { date: '2023-10-16', event: 'Received first offer' },
-        { date: '2023-10-18', event: 'Additional offers received' },
-      ],
-      repaymentPlan: {
-        monetary: 3000,
-        services: [
-          { name: 'Web Development', hours: 10, value: 1500 },
-          { name: 'Home-cooked Meals', quantity: 5, value: 500 },
-        ]
-      },
-      terms: 'Repayment within 30 days. Service delivery schedule to be mutually agreed upon.',
-    },
-    {
-      id: '2',
-      borrower: {
-        name: 'Priya Singh',
-        rating: 4.2,
-        completedExchanges: 5,
-        profileImage: null,
-      },
-      amount: 2000,
-      description: 'Personal emergency. Can offer graphic design services or handmade crafts as repayment.',
-      requestDate: '2023-11-05',
-      services: ['Graphic Design', 'Handicrafts'],
-      status: 'active',
-      offersCount: 1,
-      timeline: [
-        { date: '2023-11-05', event: 'Loan request created' },
-        { date: '2023-11-07', event: 'Received offer' },
-      ],
-      repaymentPlan: {
-        monetary: 1000,
-        services: [
-          { name: 'Graphic Design', hours: 5, value: 700 },
-          { name: 'Handmade Crafts', quantity: 3, value: 300 },
-        ]
-      },
-      terms: 'Repayment within 45 days. Service quality to be as per samples provided.',
-    },
-    {
-      id: '3',
-      borrower: {
-        name: 'Ajay Sharma',
-        rating: 4.9,
-        completedExchanges: 18,
-        profileImage: null,
-      },
-      amount: 8000,
-      description: 'Need to pay medical bills. Can offer carpentry work, furniture repair or gardening services.',
-      requestDate: '2023-11-10',
-      services: ['Carpentry', 'Gardening'],
-      status: 'active',
-      offersCount: 5,
-      timeline: [
-        { date: '2023-11-10', event: 'Loan request created' },
-        { date: '2023-11-12', event: 'Multiple offers received' },
-        { date: '2023-11-15', event: 'Negotiation in progress' },
-      ],
-      repaymentPlan: {
-        monetary: 5000,
-        services: [
-          { name: 'Carpentry', hours: 15, value: 2250 },
-          { name: 'Gardening', hours: 5, value: 750 },
-        ]
-      },
-      terms: 'Repayment within 60 days. Service schedule to be determined based on lender preference.',
-    },
-    {
-      id: '4',
-      borrower: {
-        name: 'Meera Patel',
-        rating: 3.7,
-        completedExchanges: 3,
-        profileImage: null,
-      },
-      amount: 3500,
-      description: 'Need money for college fees. Can teach mathematics or physics to high school students.',
-      requestDate: '2023-11-12',
-      services: ['Tutoring: Mathematics', 'Tutoring: Physics'],
-      status: 'active',
-      offersCount: 0,
-      timeline: [
-        { date: '2023-11-12', event: 'Loan request created' },
-      ],
-      repaymentPlan: {
-        monetary: 2000,
-        services: [
-          { name: 'Mathematics Tutoring', hours: 10, value: 1000 },
-          { name: 'Physics Tutoring', hours: 5, value: 500 },
-        ]
-      },
-      terms: 'Repayment within 90 days. Tutoring services to be provided online or in-person based on mutual agreement.',
-    },
-  ];
-
-  return mockLoans.find(loan => loan.id === id);
-};
+import { useLoansData } from '@/hooks/useLoansData';
 
 const LoanDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+  const { createLoanOffer } = useLoansData();
+  const [loan, setLoan] = useState<any>(null);
+  const [borrower, setBorrower] = useState<any>(null);
+  const [offers, setOffers] = useState<any[]>([]);
+  const [userOffers, setUserOffers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isCustomOfferDialogOpen, setIsCustomOfferDialogOpen] = useState(false);
   const [isNegotiationDialogOpen, setIsNegotiationDialogOpen] = useState(false);
@@ -170,15 +62,91 @@ const LoanDetails = () => {
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [offerAccepted, setOfferAccepted] = useState(false);
   
-  const [previousOffers, setPreviousOffers] = useState<any[]>([]);
-  
   if (!id) {
     navigate('/loans');
     return null;
   }
 
-  const loan = getLoanDetails(id);
-
+  useEffect(() => {
+    const fetchLoanDetails = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch the loan with borrower information
+        const { data: loanData, error: loanError } = await supabase
+          .from('loans')
+          .select(`
+            *,
+            borrower:profiles!borrower_id(id, name, email, role, avatar, balance)
+          `)
+          .eq('id', id)
+          .single();
+          
+        if (loanError) throw loanError;
+        
+        setLoan(loanData);
+        setBorrower(loanData.borrower);
+        
+        // Fetch offers for this loan
+        const { data: offersData, error: offersError } = await supabase
+          .from('offers')
+          .select(`
+            *,
+            lender:profiles!lender_id(id, name, email, role, avatar)
+          `)
+          .eq('loan_id', id);
+          
+        if (offersError) throw offersError;
+        
+        setOffers(offersData || []);
+        
+        // If the user is logged in, check for their offers
+        if (user) {
+          const userOffersFiltered = offersData?.filter(
+            offer => offer.lender_id === user.id
+          ) || [];
+          setUserOffers(userOffersFiltered);
+          
+          // Check if the user has an accepted offer
+          const acceptedOffer = userOffersFiltered.find(
+            offer => offer.status === 'accepted'
+          );
+          
+          if (acceptedOffer) {
+            setOfferSubmitted(true);
+            setOfferAccepted(true);
+          } else if (userOffersFiltered.length > 0) {
+            setOfferSubmitted(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching loan details:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load loan details.',
+          variant: 'destructive',
+        });
+        navigate('/loans');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchLoanDetails();
+  }, [id, user, navigate, toast]);
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <NavBar />
+        <div className="flex-grow py-20 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <p className="text-gray-500">Loading loan details...</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  
   if (!loan) {
     navigate('/loans');
     return null;
@@ -192,13 +160,32 @@ const LoanDetails = () => {
     setIsNegotiationDialogOpen(true);
   };
 
-  const handleFundLoan = () => {
-    // Instead of opening payment dialog directly, set offer as submitted
-    setOfferSubmitted(true);
-    toast({
-      title: "Offer submitted!",
-      description: "Your offer has been sent to the borrower. You'll be notified when they accept.",
-    });
+  const handleFundLoan = async () => {
+    try {
+      const result = await createLoanOffer(
+        id || '', 
+        parseFloat(loan.amount.toString()), 
+        "I'd like to fund your loan request in full."
+      );
+      
+      if (result) {
+        setOfferSubmitted(true);
+        toast({
+          title: "Offer submitted!",
+          description: "Your offer has been sent to the borrower. You'll be notified when they accept.",
+        });
+        
+        // Refresh the page to update the data
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error creating offer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit offer.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const openPaymentDialog = () => {
@@ -237,18 +224,31 @@ const LoanDetails = () => {
     });
   };
 
-  const handleOfferSubmit = () => {
-    setPreviousOffers([
-      ...previousOffers,
-      {
-        amount: parseFloat(loan.amount.toString()), 
-        message: "Your offer has been submitted successfully. Awaiting borrower's response.",
-        services: [...loan.services]
+  const handleOfferSubmit = async (amount: number, message: string) => {
+    try {
+      const result = await createLoanOffer(id || '', amount, message);
+      
+      if (result) {
+        setUserOffers([...userOffers, result]);
+        setOfferSubmitted(true);
+        setIsCustomOfferDialogOpen(false);
+        
+        toast({
+          title: "Offer submitted!",
+          description: "Your offer has been sent to the borrower.",
+        });
+        
+        // Refresh the page to update the data
+        window.location.reload();
       }
-    ]);
-    
-    setIsCustomOfferDialogOpen(false);
-    setOfferSubmitted(true);
+    } catch (error) {
+      console.error('Error creating offer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit offer.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleAcceptOffer = () => {
@@ -259,6 +259,7 @@ const LoanDetails = () => {
     });
   };
 
+  // This is a simplified version of the loan details page
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
@@ -287,7 +288,7 @@ const LoanDetails = () => {
                       </CardTitle>
                       <CardDescription className="mt-2 flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>Posted on {loan.requestDate}</span>
+                        <span>Posted on {new Date(loan.created_at).toLocaleDateString()}</span>
                       </CardDescription>
                     </div>
                   </div>
@@ -309,79 +310,18 @@ const LoanDetails = () => {
                       </h3>
                       <div className="flex items-center mb-4">
                         <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3 text-lg font-medium">
-                          {loan.borrower.name.charAt(0)}
+                          {borrower?.name?.charAt(0) || '?'}
                         </div>
                         <div>
-                          <p className="font-medium">{loan.borrower.name}</p>
+                          <p className="font-medium">{borrower?.name || 'Unknown'}</p>
                           <div className="flex items-center text-sm text-gray-500">
                             <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                            <span>{loan.borrower.rating}</span>
+                            <span>Rating to be implemented</span>
                             <span className="mx-2">•</span>
-                            <span>{loan.borrower.completedExchanges} completed exchanges</span>
+                            <span>0 completed exchanges</span>
                           </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium flex items-center gap-2 mb-3">
-                        <Shield className="h-5 w-5 text-primary" />
-                        Repayment Terms
-                      </h3>
-                      <p className="text-gray-700 dark:text-gray-300 mb-4">{loan.terms}</p>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Card className="bg-green-50 border-green-200">
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-lg text-green-800">Monetary Repayment</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-2xl font-bold text-green-700 flex items-center">
-                              <IndianRupee className="h-5 w-5 mr-1" />
-                              {loan.repaymentPlan.monetary}
-                            </p>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card className="bg-blue-50 border-blue-200">
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-lg text-blue-800">Services Value</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-2xl font-bold text-blue-700 flex items-center">
-                              <IndianRupee className="h-5 w-5 mr-1" />
-                              {loan.repaymentPlan.services.reduce((sum, service) => sum + service.value, 0)}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-medium flex items-center gap-2 mb-3">
-                        <Calendar className="h-5 w-5 text-primary" />
-                        Service Repayment Details
-                      </h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Service</TableHead>
-                            <TableHead>Quantity/Hours</TableHead>
-                            <TableHead className="text-right">Value (₹)</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {loan.repaymentPlan.services.map((service, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="font-medium">{service.name}</TableCell>
-                              <TableCell>
-                                {service.hours ? `${service.hours} hours` : `${service.quantity} items`}
-                              </TableCell>
-                              <TableCell className="text-right">{service.value}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
                     </div>
                   </div>
                 </CardContent>
@@ -389,7 +329,7 @@ const LoanDetails = () => {
             </div>
 
             <div className="space-y-6">
-              {isAuthenticated && user?.role === 'lender' && (
+              {isAuthenticated && user?.user_metadata?.role === 'lender' && (
                 <Card className="shadow-md">
                   <CardHeader className="pb-2">
                     <CardTitle>Lender Actions</CardTitle>
@@ -455,43 +395,43 @@ const LoanDetails = () => {
 
               <Card className="shadow-md">
                 <CardHeader className="pb-2">
-                  <CardTitle>Offered Services</CardTitle>
-                  <CardDescription>Services available as repayment</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="flex flex-wrap gap-2">
-                    {loan.services.map((service, index) => (
-                      <Badge 
-                        key={index} 
-                        className="bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-900"
-                      >
-                        {service}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-md">
-                <CardHeader className="pb-2">
                   <CardTitle>Loan Timeline</CardTitle>
                   <CardDescription>History of this loan request</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <ol className="relative border-l border-gray-200 dark:border-gray-700">
-                    {loan.timeline.map((event, index) => (
-                      <li className="mb-6 ml-4" key={index}>
-                        <div className="absolute w-3 h-3 bg-primary rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
-                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">{event.date}</time>
-                        <p className="text-base font-normal text-gray-700 dark:text-gray-300">{event.event}</p>
+                    <li className="mb-6 ml-4">
+                      <div className="absolute w-3 h-3 bg-primary rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
+                      <time className="mb-1 text-sm font-normal leading-none text-gray-500">
+                        {new Date(loan.created_at).toLocaleDateString()}
+                      </time>
+                      <p className="text-base font-normal text-gray-700 dark:text-gray-300">
+                        Loan request created
+                      </p>
+                    </li>
+                    
+                    {offers.length > 0 && offers.map((offer, index) => (
+                      <li className="mb-6 ml-4" key={offer.id}>
+                        <div className="absolute w-3 h-3 bg-blue-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
+                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">
+                          {new Date(offer.created_at).toLocaleDateString()}
+                        </time>
+                        <p className="text-base font-normal text-gray-700 dark:text-gray-300">
+                          {offer.status === 'accepted' 
+                            ? `Offer accepted from ${offer.lender?.name || 'a lender'}`
+                            : `New offer received from ${offer.lender?.name || 'a lender'}`}
+                        </p>
                       </li>
                     ))}
-                    {offerSubmitted && (
+                    
+                    {loan.status === 'active' && (
                       <li className="mb-6 ml-4">
-                        <div className="absolute w-3 h-3 bg-blue-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
-                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">{new Date().toISOString().split('T')[0]}</time>
+                        <div className="absolute w-3 h-3 bg-green-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
+                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">
+                          {new Date(loan.updated_at).toLocaleDateString()}
+                        </time>
                         <p className="text-base font-normal text-gray-700 dark:text-gray-300">
-                          {offerAccepted ? "Offer accepted by borrower" : "New offer received"}
+                          Loan funded and active
                         </p>
                       </li>
                     )}
@@ -499,7 +439,7 @@ const LoanDetails = () => {
                 </CardContent>
               </Card>
 
-              {previousOffers.length > 0 && (
+              {userOffers.length > 0 && (
                 <Card className="shadow-md">
                   <CardHeader className="pb-2">
                     <CardTitle>Your Offers</CardTitle>
@@ -507,18 +447,25 @@ const LoanDetails = () => {
                   </CardHeader>
                   <CardContent className="pt-4">
                     <div className="space-y-3">
-                      {previousOffers.map((offer, index) => (
+                      {userOffers.map((offer, index) => (
                         <div key={index} className="p-3 border rounded-md">
                           <div className="flex justify-between mb-1">
                             <span className="text-sm font-medium">Offer #{index + 1}</span>
                             <span className="text-xs text-gray-500">
-                              {new Date().toLocaleDateString()}
+                              {new Date(offer.created_at).toLocaleDateString()}
                             </span>
                           </div>
                           <p className="text-lg font-bold flex items-center">
                             <IndianRupee className="h-4 w-4 mr-1" />
                             {offer.amount}
                           </p>
+                          <div className={`mt-1 inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                            offer.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                            offer.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {offer.status}
+                          </div>
                           {offer.message && (
                             <p className="text-sm mt-2 text-gray-700">{offer.message}</p>
                           )}
@@ -549,7 +496,10 @@ const LoanDetails = () => {
           isOpen={isCustomOfferDialogOpen}
           onClose={() => setIsCustomOfferDialogOpen(false)}
           onOfferSubmit={handleOfferSubmit}
-          previousOffers={previousOffers}
+          previousOffers={userOffers.map(offer => ({
+            amount: parseFloat(offer.amount.toString()),
+            message: offer.message || ""
+          }))}
         />
       )}
       
@@ -566,7 +516,7 @@ const LoanDetails = () => {
           isOpen={isRatingDialogOpen}
           onClose={() => setIsRatingDialogOpen(false)}
           userToRate={{
-            name: loan.borrower.name,
+            name: borrower?.name || 'Unknown',
             role: 'borrower'
           }}
         />

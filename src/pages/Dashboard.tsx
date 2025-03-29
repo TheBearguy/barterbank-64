@@ -8,12 +8,12 @@ import { useAuth } from '@/context/AuthContext';
 import StatCard from '@/components/dashboard/StatCard';
 import BorrowerTabs from '@/components/dashboard/BorrowerTabs';
 import LenderTabs from '@/components/dashboard/LenderTabs';
-import { useDashboardData } from '@/hooks/useDashboardData';
+import { useLoansData } from '@/hooks/useLoansData';
 
 const Dashboard = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const { userLoans, offers, services, availableLoans, loading } = useDashboardData();
+  const { userLoans, availableLoans, receivedOffers, madeOffers, loading } = useLoansData();
 
   // Redirect if not logged in
   if (!isAuthenticated) {
@@ -27,6 +27,9 @@ const Dashboard = () => {
   const handleViewLoanDetails = (loanId: string) => {
     navigate(`/loans/${loanId}`);
   };
+
+  // Mock services data - in a real app, this would come from API
+  const services = [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -43,13 +46,19 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <StatCard
               title="Total Value"
-              value="₹0"
+              value={`₹${user?.user_metadata?.role === 'borrower' 
+                ? userLoans?.reduce((sum, loan) => sum + parseFloat(loan.amount.toString()), 0) || 0
+                : madeOffers?.reduce((sum, offer) => sum + parseFloat(offer.amount.toString()), 0) || 0
+              }`}
               icon={DollarSign}
             />
             
             <StatCard
               title="Active Exchanges"
-              value="0"
+              value={user?.user_metadata?.role === 'borrower'
+                ? userLoans?.filter(loan => loan.status === 'active').length || 0
+                : madeOffers?.filter(offer => offer.status === 'accepted').length || 0
+              }
               icon={HandCoins}
             />
             
@@ -67,16 +76,14 @@ const Dashboard = () => {
             </div>
           ) : user?.user_metadata?.role === 'borrower' ? (
             <BorrowerTabs
-              userLoans={userLoans}
-              offers={offers}
               services={services}
               onCreateLoan={handleCreateLoan}
               onViewLoanDetails={handleViewLoanDetails}
             />
           ) : (
             <LenderTabs
-              offers={offers}
-              availableLoans={availableLoans}
+              offers={madeOffers || []}
+              availableLoans={availableLoans || []}
               onViewLoanDetails={handleViewLoanDetails}
             />
           )}

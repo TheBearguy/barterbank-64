@@ -12,18 +12,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { IndianRupee, MessageSquare } from 'lucide-react';
+import { IndianRupee } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface CustomOfferDialogProps {
   loan: any;
   isOpen: boolean;
   onClose: () => void;
-  onOfferSubmit: () => void;
+  onOfferSubmit: (amount: number, message: string) => void;
   previousOffers?: {
-    amount: string;
+    amount: number;
     message: string;
-    services: string[];
   }[];
 }
 
@@ -35,19 +34,16 @@ const CustomOfferDialog: React.FC<CustomOfferDialogProps> = ({
   previousOffers = []
 }) => {
   const { toast } = useToast();
-  const [offerAmount, setOfferAmount] = useState<string>(loan.amount.toString());
+  const [offerAmount, setOfferAmount] = useState<string>(loan.amount?.toString() || "0");
   const [message, setMessage] = useState<string>('');
-  const [services, setServices] = useState<string[]>([...loan.services]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [customService, setCustomService] = useState<string>('');
 
   // If there are previous offers, initialize with the latest one
   React.useEffect(() => {
     if (previousOffers.length > 0) {
       const latestOffer = previousOffers[previousOffers.length - 1];
-      setOfferAmount(latestOffer.amount);
+      setOfferAmount(latestOffer.amount.toString());
       setMessage(latestOffer.message);
-      setServices(latestOffer.services);
     }
   }, [previousOffers]);
 
@@ -63,26 +59,17 @@ const CustomOfferDialog: React.FC<CustomOfferDialogProps> = ({
 
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      onOfferSubmit(parseFloat(offerAmount), message);
       setIsSubmitting(false);
-      onOfferSubmit();
+    } catch (error) {
+      setIsSubmitting(false);
       toast({
-        title: "Offer submitted!",
-        description: "Your offer has been sent to the borrower.",
+        title: "Error",
+        description: "There was an error submitting your offer",
+        variant: "destructive",
       });
-    }, 1000);
-  };
-
-  const handleAddService = () => {
-    if (customService.trim() && !services.includes(customService.trim())) {
-      setServices([...services, customService.trim()]);
-      setCustomService('');
     }
-  };
-
-  const handleRemoveService = (serviceToRemove: string) => {
-    setServices(services.filter(service => service !== serviceToRemove));
   };
 
   return (
@@ -91,7 +78,7 @@ const CustomOfferDialog: React.FC<CustomOfferDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Make Custom Offer</DialogTitle>
           <DialogDescription>
-            Customize your offer for {loan.borrower.name}
+            Customize your offer for {loan.borrower?.name || "the borrower"}
           </DialogDescription>
         </DialogHeader>
         
@@ -129,41 +116,6 @@ const CustomOfferDialog: React.FC<CustomOfferDialogProps> = ({
               onChange={(e) => setMessage(e.target.value)}
               className="min-h-[100px]"
             />
-          </div>
-          
-          <div className="space-y-2">
-            <Label>Accepted Services</Label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {services.map((service, index) => (
-                <div 
-                  key={index}
-                  className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center"
-                >
-                  <span>{service}</span>
-                  <button
-                    type="button"
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                    onClick={() => handleRemoveService(service)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add a service..."
-                value={customService}
-                onChange={(e) => setCustomService(e.target.value)}
-              />
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleAddService}
-              >
-                Add
-              </Button>
-            </div>
           </div>
         </div>
         

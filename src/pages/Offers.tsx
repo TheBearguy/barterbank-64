@@ -7,16 +7,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, DollarSign, Handshake } from 'lucide-react';
+import { useLoansData } from '@/hooks/useLoansData';
+import { Clock, DollarSign, Handshake, CheckCircle, X, RefreshCw } from 'lucide-react';
+import OfferCard from '@/components/dashboard/OfferCard';
 
 const Offers = () => {
   const { isAuthenticated, user } = useAuth();
-  const [myLoans, setMyLoans] = useState([]);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userLoans, receivedOffers, loading, updateOfferStatus } = useLoansData();
+  const [activeTab, setActiveTab] = useState('myLoans');
 
   // Redirect lenders to loans page
   useEffect(() => {
@@ -27,42 +28,33 @@ const Offers = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
-  // Fetch borrower's loans with their offers
-  useEffect(() => {
-    const fetchMyLoans = async () => {
-      if (!isAuthenticated || !user) return;
+  const handleViewLoanDetails = (loanId: string) => {
+    navigate(`/loans/${loanId}`);
+  };
 
-      try {
-        setLoading(true);
-        // First get all loans created by this borrower
-        const { data: loans, error: loansError } = await supabase
-          .from('loans')
-          .select('*')
-          .eq('borrower_id', user.id);
+  const handleAcceptOffer = async (offerId: string) => {
+    const success = await updateOfferStatus(offerId, 'accepted');
+    if (success) {
+      toast({
+        title: "Offer Accepted",
+        description: "The loan offer has been accepted and the loan is now active.",
+      });
+      // Refresh the page to update the data
+      window.location.reload();
+    }
+  };
 
-        if (loansError) throw loansError;
-
-        if (loans && loans.length > 0) {
-          // For simplicity, we're just using the loans data
-          // In a real app, you would fetch offers for each loan
-          setMyLoans(loans);
-        } else {
-          setMyLoans([]);
-        }
-      } catch (error) {
-        console.error('Error fetching loans and offers:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load your loans and offers',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMyLoans();
-  }, [isAuthenticated, user, toast]);
+  const handleDeclineOffer = async (offerId: string) => {
+    const success = await updateOfferStatus(offerId, 'rejected');
+    if (success) {
+      toast({
+        title: "Offer Declined",
+        description: "The loan offer has been declined.",
+      });
+      // Refresh the page to update the data
+      window.location.reload();
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -84,7 +76,7 @@ const Offers = () => {
             </Link>
           </div>
           
-          <Tabs defaultValue="myLoans" className="w-full">
+          <Tabs defaultValue="myLoans" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid grid-cols-2 max-w-md mx-auto mb-8">
               <TabsTrigger value="myLoans">My Loan Requests</TabsTrigger>
               <TabsTrigger value="receivedOffers">Received Offers</TabsTrigger>
@@ -95,9 +87,9 @@ const Offers = () => {
                 <div className="text-center py-12">
                   <p className="text-gray-500">Loading your loan requests...</p>
                 </div>
-              ) : myLoans.length > 0 ? (
+              ) : userLoans.length > 0 ? (
                 <div className="grid grid-cols-1 gap-6">
-                  {myLoans.map(loan => (
+                  {userLoans.map(loan => (
                     <Card key={loan.id} className="overflow-hidden hover:shadow-elevation transition-shadow">
                       <CardHeader className="pb-2 border-b">
                         <div className="flex justify-between items-start">
@@ -136,7 +128,12 @@ const Offers = () => {
                               </Button>
                             </Link>
                             {loan.status === 'pending' && (
-                              <Button size="sm" variant="destructive" onClick={() => {}}>
+                              <Button size="sm" variant="destructive" onClick={() => {
+                                toast({
+                                  title: "Coming Soon",
+                                  description: "Canceling loan requests will be available soon.",
+                                });
+                              }}>
                                 Cancel Request
                               </Button>
                             )}
@@ -157,18 +154,42 @@ const Offers = () => {
             </TabsContent>
             
             <TabsContent value="receivedOffers" className="space-y-6">
-              <div className="text-center py-12">
-                <div className="flex flex-col items-center">
-                  <Handshake className="h-16 w-16 text-primary mb-4" />
-                  <p className="text-gray-500 mb-4">You haven't received any offers yet for your loan requests.</p>
-                  <p className="text-gray-500 mb-4">Once lenders show interest in your requests, their offers will appear here.</p>
-                  {myLoans.length === 0 && (
-                    <Link to="/create-loan">
-                      <Button>Create Your First Loan Request</Button>
-                    </Link>
-                  )}
+              {loading ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Loading offers...</p>
                 </div>
-              </div>
+              ) : receivedOffers.length > 0 ? (
+                <div className="grid grid-cols-1 gap-6">
+                  {receivedOffers.map(offer => (
+                    <OfferCard
+                      key={offer.id}
+                      id={offer.id}
+                      amount={parseInt(offer.amount.toString())}
+                      status={offer.status}
+                      offerDate={new Date(offer.created_at).toLocaleDateString()}
+                      loanId={offer.loan_id}
+                      lenderName={offer.lender?.name || "Unknown Lender"}
+                      message={offer.message || ""}
+                      onViewDetails={handleViewLoanDetails}
+                      onAccept={handleAcceptOffer}
+                      onDecline={handleDeclineOffer}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="flex flex-col items-center">
+                    <Handshake className="h-16 w-16 text-primary mb-4" />
+                    <p className="text-gray-500 mb-4">You haven't received any offers yet for your loan requests.</p>
+                    <p className="text-gray-500 mb-4">Once lenders show interest in your requests, their offers will appear here.</p>
+                    {userLoans.length === 0 && (
+                      <Link to="/create-loan">
+                        <Button>Create Your First Loan Request</Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

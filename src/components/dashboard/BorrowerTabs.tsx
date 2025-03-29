@@ -7,21 +7,14 @@ import LoanRequestCard from './LoanRequestCard';
 import OfferCard from './OfferCard';
 import ServiceCard from './ServiceCard';
 import { useToast } from '@/hooks/use-toast';
+import { useLoansData } from '@/hooks/useLoansData';
 
 interface Loan {
   id: string;
   amount: number;
   status: string;
-  requestDate: string;
-  offersCount: number;
-}
-
-interface Offer {
-  id: string;
-  amount: number;
-  status: string;
-  offerDate: string;
-  loanId: string;
+  created_at: string;
+  description: string;
 }
 
 interface Service {
@@ -32,39 +25,41 @@ interface Service {
 }
 
 interface BorrowerTabsProps {
-  userLoans: Loan[];
-  offers: Offer[];
   services: Service[];
   onCreateLoan: () => void;
   onViewLoanDetails: (id: string) => void;
 }
 
 const BorrowerTabs = ({
-  userLoans,
-  offers,
   services,
   onCreateLoan,
   onViewLoanDetails
 }: BorrowerTabsProps) => {
   const { toast } = useToast();
-
-  const handleAcceptOffer = (offerId: string) => {
-    const offer = offers.find(o => o.id === offerId);
-    if (offer) {
+  const { userLoans, receivedOffers, loading, updateOfferStatus } = useLoansData();
+  
+  const handleAcceptOffer = async (offerId: string) => {
+    const success = await updateOfferStatus(offerId, 'accepted');
+    if (success) {
       toast({
         title: "Offer Accepted",
         description: "You have accepted the offer. Lender has been notified.",
       });
-      onViewLoanDetails(offer.loanId);
+      // Refresh the page to update data
+      window.location.reload();
     }
   };
 
-  const handleDeclineOffer = (offerId: string) => {
-    toast({
-      title: "Offer Declined",
-      description: "You have declined the offer. Lender has been notified.",
-    });
-    // In a real app, you would update the offer status in the database
+  const handleDeclineOffer = async (offerId: string) => {
+    const success = await updateOfferStatus(offerId, 'rejected');
+    if (success) {
+      toast({
+        title: "Offer Declined",
+        description: "You have declined the offer. Lender has been notified.",
+      });
+      // Refresh the page to update data
+      window.location.reload();
+    }
   };
 
   const handleEditService = (serviceId: string) => {
@@ -100,16 +95,20 @@ const BorrowerTabs = ({
           </Button>
         </div>
         
-        {userLoans.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Loading your loan requests...</p>
+          </div>
+        ) : userLoans && userLoans.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {userLoans.map(loan => (
               <LoanRequestCard
                 key={loan.id}
                 id={loan.id}
-                amount={loan.amount}
+                amount={parseFloat(loan.amount.toString())}
                 status={loan.status}
-                requestDate={loan.requestDate}
-                offersCount={loan.offersCount}
+                requestDate={new Date(loan.created_at).toLocaleDateString()}
+                offersCount={0} // This would be calculated in a real app
                 onViewDetails={onViewLoanDetails}
               />
             ))}
@@ -125,16 +124,22 @@ const BorrowerTabs = ({
       <TabsContent value="offers" className="space-y-6">
         <h3 className="text-xl font-semibold mb-6">Offers on Your Requests</h3>
         
-        {offers.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Loading offers...</p>
+          </div>
+        ) : receivedOffers && receivedOffers.length > 0 ? (
           <div className="grid grid-cols-1 gap-6">
-            {offers.map(offer => (
+            {receivedOffers.map(offer => (
               <OfferCard
                 key={offer.id}
                 id={offer.id}
-                amount={offer.amount}
+                amount={parseFloat(offer.amount.toString())}
                 status={offer.status}
-                offerDate={offer.offerDate}
-                loanId={offer.loanId}
+                offerDate={new Date(offer.created_at).toLocaleDateString()}
+                loanId={offer.loan_id}
+                lenderName={offer.lender?.name || "Unknown Lender"}
+                message={offer.message || ""}
                 onViewDetails={onViewLoanDetails}
                 onAccept={handleAcceptOffer}
                 onDecline={handleDeclineOffer}
@@ -157,7 +162,7 @@ const BorrowerTabs = ({
           </Button>
         </div>
         
-        {services.length > 0 ? (
+        {services && services.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {services.map(service => (
               <ServiceCard

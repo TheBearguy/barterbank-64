@@ -4,28 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import OfferCard from './OfferCard';
-import LoanRequestCard from './LoanRequestCard';
 import { useNavigate } from 'react-router-dom';
 
-interface Loan {
-  id: string;
-  amount: number;
-  status: string;
-  requestDate: string;
-  offersCount: number;
-}
-
-interface Offer {
-  id: string;
-  amount: number;
-  status: string;
-  offerDate: string;
-  loanId: string;
-}
-
 interface LenderTabsProps {
-  offers: Offer[];
-  availableLoans: Loan[];
+  offers: any[];
+  availableLoans: any[];
   onViewLoanDetails: (id: string) => void;
 }
 
@@ -48,10 +31,10 @@ const LenderTabs = ({ offers, availableLoans, onViewLoanDetails }: LenderTabsPro
               <OfferCard
                 key={offer.id}
                 id={offer.id}
-                amount={offer.amount}
+                amount={parseFloat(offer.amount.toString())}
                 status={offer.status}
-                offerDate={offer.offerDate}
-                loanId={offer.loanId}
+                offerDate={new Date(offer.created_at).toLocaleDateString()}
+                loanId={offer.loan_id}
                 onViewDetails={onViewLoanDetails}
               />
             ))}
@@ -80,12 +63,12 @@ const LenderTabs = ({ offers, availableLoans, onViewLoanDetails }: LenderTabsPro
                       {loan.status}
                     </div>
                   </div>
-                  <CardDescription>Requested on {loan.requestDate}</CardDescription>
+                  <CardDescription>Requested on {new Date(loan.created_at).toLocaleDateString()}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-sm text-gray-500">
-                      {loan.offersCount} Offers received
+                      From {loan.borrower?.name || 'Unknown'}
                     </span>
                     <div className="space-x-2">
                       <Button 
