@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { DollarSign, HandCoins, Star } from 'lucide-react';
 import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
@@ -9,6 +9,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import BorrowerTabs from '@/components/dashboard/BorrowerTabs';
 import LenderTabs from '@/components/dashboard/LenderTabs';
 import { useLoansData } from '@/hooks/useLoansData';
+import { Button } from '@/components/ui/button';
 
 const Dashboard = () => {
   const { isAuthenticated, user } = useAuth();
