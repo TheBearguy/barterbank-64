@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export type UserRole = 'lender' | 'borrower';
 
@@ -92,9 +93,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      // First clear local state
+      setUser(null);
+      setSession(null);
+      
+      // Then attempt to sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.warn('Logout from server failed, but local session was cleared:', error);
+        // Still notify the user they've been logged out even if the server call failed
+        toast.success('Logged out successfully');
+      } else {
+        toast.success('Logged out successfully');
+      }
+      
+      // Force navigate to home page after logout (can be added if you want to ensure redirection)
+      // window.location.href = '/';
+      
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Logout process error:', error);
+      // Even if there was an error, we've already cleared the local session
+      toast.success('Logged out from local session');
     }
   };
 
