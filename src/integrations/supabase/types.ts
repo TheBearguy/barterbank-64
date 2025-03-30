@@ -104,31 +104,40 @@ export type Database = {
       offers: {
         Row: {
           amount: number
+          borrower_repayment_proposal: Json | null
           created_at: string
           id: string
           lender_id: string
+          lender_repayment_proposal: Json | null
           loan_id: string
           message: string | null
+          repayment_status: string | null
           status: string
           updated_at: string
         }
         Insert: {
           amount: number
+          borrower_repayment_proposal?: Json | null
           created_at?: string
           id?: string
           lender_id: string
+          lender_repayment_proposal?: Json | null
           loan_id: string
           message?: string | null
+          repayment_status?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           amount?: number
+          borrower_repayment_proposal?: Json | null
           created_at?: string
           id?: string
           lender_id?: string
+          lender_repayment_proposal?: Json | null
           loan_id?: string
           message?: string | null
+          repayment_status?: string | null
           status?: string
           updated_at?: string
         }
@@ -155,6 +164,8 @@ export type Database = {
           created_at: string
           id: string
           loan_id: string
+          payment_method: string | null
+          proof_document: string | null
           service_id: string | null
           status: string
           type: string
@@ -165,6 +176,8 @@ export type Database = {
           created_at?: string
           id?: string
           loan_id: string
+          payment_method?: string | null
+          proof_document?: string | null
           service_id?: string | null
           status?: string
           type: string
@@ -175,6 +188,8 @@ export type Database = {
           created_at?: string
           id?: string
           loan_id?: string
+          payment_method?: string | null
+          proof_document?: string | null
           service_id?: string | null
           status?: string
           type?: string

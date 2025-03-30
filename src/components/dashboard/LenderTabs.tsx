@@ -10,9 +10,10 @@ interface LenderTabsProps {
   offers: any[];
   availableLoans: any[];
   onViewLoanDetails: (id: string) => void;
+  onViewRepayment?: (id: string) => void;
 }
 
-const LenderTabs = ({ offers, availableLoans, onViewLoanDetails }: LenderTabsProps) => {
+const LenderTabs = ({ offers, availableLoans, onViewLoanDetails, onViewRepayment }: LenderTabsProps) => {
   const navigate = useNavigate();
 
   return (
@@ -37,8 +38,12 @@ const LenderTabs = ({ offers, availableLoans, onViewLoanDetails }: LenderTabsPro
                 loanId={offer.loan_id}
                 message={offer.message}
                 borrowerNote={offer.borrower_note}
+                repaymentStatus={offer.repayment_status}
+                borrowerRepaymentProposal={offer.borrower_repayment_proposal}
+                lenderRepaymentProposal={offer.lender_repayment_proposal}
                 lenderName={offer.borrower?.name ? `To ${offer.borrower.name}` : undefined}
                 onViewDetails={onViewLoanDetails}
+                onViewRepayment={onViewRepayment}
               />
             ))}
           </div>

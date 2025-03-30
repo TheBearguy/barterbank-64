@@ -37,7 +37,7 @@ export function useLoanDetails(loanId: string) {
         if (loanError) throw loanError;
         setLoan(loanData);
         
-        // Fetch offers for this loan
+        // Fetch offers for this loan, including repayment information
         const { data: offerData, error: offerError } = await supabase
           .from('offers')
           .select(`

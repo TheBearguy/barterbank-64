@@ -8,6 +8,8 @@ import PaymentDialog from '@/components/loans/PaymentDialog';
 import CustomOfferDialog from '@/components/loans/CustomOfferDialog';
 import NegotiationDialog from '@/components/loans/NegotiationDialog';
 import RatingDialog from '@/components/loans/RatingDialog';
+import RepaymentDialog from '@/components/loans/RepaymentDialog';
+import RepaymentResponseDialog from '@/components/loans/RepaymentResponseDialog';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Card,
@@ -39,7 +41,9 @@ import {
   CreditCard, 
   CheckCircle2,
   AlertCircle,
-  ThumbsUp
+  ThumbsUp,
+  Handshake,
+  RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLoansData } from '@/hooks/useLoansData';
@@ -59,6 +63,9 @@ const LoanDetails = () => {
   const [isCustomOfferDialogOpen, setIsCustomOfferDialogOpen] = useState(false);
   const [isNegotiationDialogOpen, setIsNegotiationDialogOpen] = useState(false);
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
+  const [isRepaymentDialogOpen, setIsRepaymentDialogOpen] = useState(false);
+  const [isRepaymentResponseDialogOpen, setIsRepaymentResponseDialogOpen] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<any>(null);
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [offerAccepted, setOfferAccepted] = useState(false);
   
@@ -259,7 +266,34 @@ const LoanDetails = () => {
     });
   };
 
-  // This is a simplified version of the loan details page
+  const handleInitiateRepayment = () => {
+    setIsRepaymentDialogOpen(true);
+  };
+
+  const handleRepaymentProposed = () => {
+    // Refresh the data after a repayment is proposed
+    window.location.reload();
+  };
+
+  const handleViewRepaymentProposal = (offer: any) => {
+    setSelectedOffer(offer);
+    setIsRepaymentResponseDialogOpen(true);
+  };
+
+  const handleRepaymentResponseSent = () => {
+    // Refresh the data after a response is sent
+    window.location.reload();
+  };
+
+  // Find an accepted offer for this loan
+  const acceptedOffer = offers.find(offer => offer.status === 'accepted');
+
+  // Check if the current user is the borrower
+  const isBorrower = user && borrower && user.id === borrower.id;
+  
+  // Check if the current user is the lender
+  const isLender = user && acceptedOffer && user.id === acceptedOffer.lender_id;
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
@@ -282,7 +316,12 @@ const LoanDetails = () => {
                       <CardTitle className="flex items-center gap-2 text-2xl">
                         <IndianRupee className="h-6 w-6 text-primary" />
                         {loan.amount}
-                        <Badge variant="outline" className="ml-2 bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900">
+                        <Badge variant="outline" className={`ml-2 ${
+                          loan.status === 'active' ? 'bg-green-100 text-green-800' : 
+                          loan.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          loan.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
                           {loan.status}
                         </Badge>
                       </CardTitle>
@@ -323,6 +362,161 @@ const LoanDetails = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Repayment Status Section - show only for active loans */}
+                    {loan.status === 'active' && acceptedOffer && (
+                      <div>
+                        <h3 className="text-lg font-medium flex items-center gap-2 mb-3">
+                          <RefreshCw className="h-5 w-5 text-primary" />
+                          Repayment Status
+                        </h3>
+                        
+                        {acceptedOffer.repayment_status && acceptedOffer.repayment_status !== 'pending' ? (
+                          <div className="mb-4 rounded-md border p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium">Current Repayment Proposal</h4>
+                              <Badge className={`${
+                                acceptedOffer.repayment_status === 'proposed' ? 'bg-blue-100 text-blue-800' :
+                                acceptedOffer.repayment_status === 'accepted' ? 'bg-green-100 text-green-800' :
+                                acceptedOffer.repayment_status === 'counter' ? 'bg-amber-100 text-amber-800' :
+                                acceptedOffer.repayment_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {acceptedOffer.repayment_status === 'proposed' ? 'Proposed' :
+                                 acceptedOffer.repayment_status === 'accepted' ? 'Accepted' :
+                                 acceptedOffer.repayment_status === 'counter' ? 'Counter Offered' :
+                                 acceptedOffer.repayment_status === 'rejected' ? 'Rejected' : 'Unknown'}
+                              </Badge>
+                            </div>
+                            
+                            {acceptedOffer.repayment_status === 'proposed' && acceptedOffer.borrower_repayment_proposal && (
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Proposed by:</span>
+                                  <span className="font-medium">Borrower</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Method:</span>
+                                  <span className="font-medium capitalize">
+                                    {acceptedOffer.borrower_repayment_proposal.method}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Amount:</span>
+                                  <span className="font-medium">₹{acceptedOffer.borrower_repayment_proposal.amount}</span>
+                                </div>
+                                
+                                {isBorrower && (
+                                  <div className="mt-4 text-center text-gray-500">
+                                    Waiting for lender's response...
+                                  </div>
+                                )}
+                                
+                                {isLender && (
+                                  <div className="mt-4">
+                                    <Button 
+                                      onClick={() => handleViewRepaymentProposal(acceptedOffer)}
+                                      className="w-full"
+                                    >
+                                      Review Proposal
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {acceptedOffer.repayment_status === 'counter' && acceptedOffer.lender_repayment_proposal && (
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Proposed by:</span>
+                                  <span className="font-medium">Lender</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Method:</span>
+                                  <span className="font-medium capitalize">
+                                    {acceptedOffer.lender_repayment_proposal.method}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Amount:</span>
+                                  <span className="font-medium">₹{acceptedOffer.lender_repayment_proposal.amount}</span>
+                                </div>
+                                
+                                {isLender && (
+                                  <div className="mt-4 text-center text-gray-500">
+                                    Waiting for borrower's response...
+                                  </div>
+                                )}
+                                
+                                {isBorrower && (
+                                  <div className="mt-4">
+                                    <Button 
+                                      onClick={() => handleInitiateRepayment()}
+                                      className="w-full"
+                                    >
+                                      Respond to Counter Offer
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {acceptedOffer.repayment_status === 'accepted' && (
+                              <div className="bg-green-50 p-3 rounded-md text-center">
+                                <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                                <p className="text-green-700 font-medium">Repayment terms accepted!</p>
+                                <p className="text-sm text-green-600">
+                                  The repayment proposal has been accepted. Proceed with the agreed terms.
+                                </p>
+                              </div>
+                            )}
+                            
+                            {acceptedOffer.repayment_status === 'rejected' && (
+                              <div className="bg-red-50 p-3 rounded-md text-center">
+                                <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                                <p className="text-red-700 font-medium">Repayment terms rejected</p>
+                                <p className="text-sm text-red-600">
+                                  The repayment proposal was rejected. 
+                                  {isBorrower && " Please propose new terms."}
+                                </p>
+                                
+                                {isBorrower && (
+                                  <Button 
+                                    onClick={() => handleInitiateRepayment()}
+                                    variant="outline"
+                                    className="mt-3"
+                                  >
+                                    Propose New Terms
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          // No repayment proposal yet
+                          <div className="text-center py-6 border rounded-md">
+                            {isBorrower ? (
+                              <>
+                                <Handshake className="h-12 w-12 text-primary mx-auto mb-3" />
+                                <p className="text-gray-700 mb-3">
+                                  Ready to repay your loan? You can propose repayment terms to the lender.
+                                </p>
+                                <Button onClick={() => handleInitiateRepayment()}>
+                                  Initiate Repayment
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                                <p className="text-gray-500 mb-2">
+                                  Waiting for the borrower to initiate repayment.
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -435,6 +629,24 @@ const LoanDetails = () => {
                         </p>
                       </li>
                     )}
+                    
+                    {acceptedOffer && acceptedOffer.repayment_status && acceptedOffer.repayment_status !== 'pending' && (
+                      <li className="mb-6 ml-4">
+                        <div className="absolute w-3 h-3 bg-purple-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
+                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">
+                          {new Date().toLocaleDateString()}
+                        </time>
+                        <p className="text-base font-normal text-gray-700 dark:text-gray-300">
+                          {acceptedOffer.repayment_status === 'proposed'
+                            ? 'Borrower proposed repayment terms'
+                            : acceptedOffer.repayment_status === 'counter'
+                            ? 'Lender made a counter proposal'
+                            : acceptedOffer.repayment_status === 'accepted'
+                            ? 'Repayment terms accepted'
+                            : 'Repayment terms rejected'}
+                        </p>
+                      </li>
+                    )}
                   </ol>
                 </CardContent>
               </Card>
@@ -519,6 +731,28 @@ const LoanDetails = () => {
             name: borrower?.name || 'Unknown',
             role: 'borrower'
           }}
+        />
+      )}
+
+      {isRepaymentDialogOpen && (
+        <RepaymentDialog
+          isOpen={isRepaymentDialogOpen}
+          onClose={() => setIsRepaymentDialogOpen(false)}
+          loanDetails={{
+            id: loan.id,
+            amount: loan.amount,
+            offer_id: acceptedOffer?.id
+          }}
+          onRepaymentProposed={handleRepaymentProposed}
+        />
+      )}
+
+      {isRepaymentResponseDialogOpen && selectedOffer && (
+        <RepaymentResponseDialog
+          isOpen={isRepaymentResponseDialogOpen}
+          onClose={() => setIsRepaymentResponseDialogOpen(false)}
+          offer={selectedOffer}
+          onResponseSent={handleRepaymentResponseSent}
         />
       )}
     </div>

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { IndianRupee, MessageSquare } from 'lucide-react';
+import { IndianRupee, MessageSquare, RefreshCw, Handshake, CreditCard } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface OfferCardProps {
   id: string;
@@ -16,10 +17,14 @@ interface OfferCardProps {
   lenderName?: string;
   message?: string;
   borrowerNote?: string;
+  repaymentStatus?: string;
+  borrowerRepaymentProposal?: any;
+  lenderRepaymentProposal?: any;
   onViewDetails: (id: string) => void;
   onAccept?: (id: string, note?: string) => void;
   onDecline?: (id: string, note?: string) => void;
   onCounter?: (id: string, amount: number, note: string) => void;
+  onViewRepayment?: (id: string) => void;
 }
 
 const OfferCard = ({ 
@@ -31,10 +36,14 @@ const OfferCard = ({
   lenderName,
   message,
   borrowerNote,
+  repaymentStatus,
+  borrowerRepaymentProposal,
+  lenderRepaymentProposal,
   onViewDetails,
   onAccept,
   onDecline,
-  onCounter
+  onCounter,
+  onViewRepayment
 }: OfferCardProps) => {
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [note, setNote] = useState('');
@@ -67,6 +76,9 @@ const OfferCard = ({
     }
   };
 
+  // If there's a repayment proposal and the status is accepted, show repayment info
+  const hasRepaymentInfo = status === 'accepted' && (repaymentStatus || borrowerRepaymentProposal || lenderRepaymentProposal);
+
   return (
     <Card className="hover:shadow-elevation transition-shadow">
       <CardHeader className="pb-2">
@@ -83,7 +95,7 @@ const OfferCard = ({
           </div>
         </div>
         <CardDescription className="mt-2">
-          {lenderName && <span className="font-medium">From {lenderName}</span>}
+          {lenderName && <span className="font-medium">{lenderName}</span>}
           <span className="ml-2">Offered on {offerDate}</span>
         </CardDescription>
       </CardHeader>
@@ -98,6 +110,82 @@ const OfferCard = ({
           <div className="mb-4 p-3 bg-blue-50 rounded-md text-gray-700 text-sm">
             <h4 className="font-semibold mb-1 text-blue-800">Your response:</h4>
             <p className="italic">{borrowerNote}</p>
+          </div>
+        )}
+        
+        {hasRepaymentInfo && (
+          <div className="mb-4 p-3 bg-green-50 rounded-md text-gray-700 text-sm border border-green-100">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-semibold text-green-800 flex items-center">
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Repayment
+              </h4>
+              {repaymentStatus && (
+                <Badge className={`${
+                  repaymentStatus === 'proposed' ? 'bg-blue-100 text-blue-800' :
+                  repaymentStatus === 'accepted' ? 'bg-green-100 text-green-800' :
+                  repaymentStatus === 'counter' ? 'bg-amber-100 text-amber-800' :
+                  repaymentStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {repaymentStatus === 'proposed' ? 'Proposed' :
+                   repaymentStatus === 'accepted' ? 'Accepted' :
+                   repaymentStatus === 'counter' ? 'Counter' :
+                   repaymentStatus === 'rejected' ? 'Rejected' : 'Pending'}
+                </Badge>
+              )}
+            </div>
+            
+            {(borrowerRepaymentProposal || lenderRepaymentProposal) && (
+              <div className="space-y-1 mt-1">
+                {borrowerRepaymentProposal && repaymentStatus === 'proposed' && (
+                  <>
+                    <div className="flex items-center text-xs text-gray-600">
+                      <span>Borrower proposes:</span>
+                      <Badge variant="outline" className="ml-1 capitalize text-xs">
+                        {borrowerRepaymentProposal.method === 'payment' ? (
+                          <><CreditCard className="mr-1 h-3 w-3" /> Payment</>
+                        ) : (
+                          <><Handshake className="mr-1 h-3 w-3" /> Services</>
+                        )}
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-medium">
+                      ₹{borrowerRepaymentProposal.amount}
+                    </div>
+                  </>
+                )}
+                
+                {lenderRepaymentProposal && repaymentStatus === 'counter' && (
+                  <>
+                    <div className="flex items-center text-xs text-gray-600">
+                      <span>Lender counter:</span>
+                      <Badge variant="outline" className="ml-1 capitalize text-xs">
+                        {lenderRepaymentProposal.method === 'payment' ? (
+                          <><CreditCard className="mr-1 h-3 w-3" /> Payment</>
+                        ) : (
+                          <><Handshake className="mr-1 h-3 w-3" /> Services</>
+                        )}
+                      </Badge>
+                    </div>
+                    <div className="text-sm font-medium">
+                      ₹{lenderRepaymentProposal.amount}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            
+            {onViewRepayment && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => onViewRepayment(id)}
+                className="mt-2 w-full text-green-700 hover:text-green-800 hover:bg-green-100"
+              >
+                View Repayment Details
+              </Button>
+            )}
           </div>
         )}
         
