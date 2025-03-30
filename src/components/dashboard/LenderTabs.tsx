@@ -11,9 +11,20 @@ interface LenderTabsProps {
   availableLoans: any[];
   onViewLoanDetails: (id: string) => void;
   onViewRepayment?: (id: string) => void;
+  onAcceptOffer?: (id: string, note?: string) => void;
+  onDeclineOffer?: (id: string, note?: string) => void;
+  onCounterOffer?: (id: string, amount: number, note: string) => void;
 }
 
-const LenderTabs = ({ offers, availableLoans, onViewLoanDetails, onViewRepayment }: LenderTabsProps) => {
+const LenderTabs = ({ 
+  offers, 
+  availableLoans, 
+  onViewLoanDetails, 
+  onViewRepayment,
+  onAcceptOffer,
+  onDeclineOffer,
+  onCounterOffer
+}: LenderTabsProps) => {
   const navigate = useNavigate();
 
   return (
@@ -44,6 +55,11 @@ const LenderTabs = ({ offers, availableLoans, onViewLoanDetails, onViewRepayment
                 lenderName={offer.borrower?.name ? `To ${offer.borrower.name}` : undefined}
                 onViewDetails={onViewLoanDetails}
                 onViewRepayment={onViewRepayment}
+                onAccept={onAcceptOffer}
+                onDecline={onDeclineOffer}
+                onCounter={onCounterOffer}
+                isLender={true}
+                paymentCompleted={offer.status === 'accepted' && offer.repayment_status !== 'pending'}
               />
             ))}
           </div>

@@ -53,7 +53,7 @@ const LoanDetails = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
-  const { createLoanOffer } = useLoansData();
+  const { createLoanOffer, updateOfferStatus } = useLoansData();
   const [loan, setLoan] = useState<any>(null);
   const [borrower, setBorrower] = useState<any>(null);
   const [offers, setOffers] = useState<any[]>([]);
@@ -68,6 +68,7 @@ const LoanDetails = () => {
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [offerAccepted, setOfferAccepted] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
   
   if (!id) {
     navigate('/loans');
@@ -122,6 +123,11 @@ const LoanDetails = () => {
           if (acceptedOffer) {
             setOfferSubmitted(true);
             setOfferAccepted(true);
+            
+            // Check if repayment process has already started, which means payment was completed
+            if (acceptedOffer.repayment_status && acceptedOffer.repayment_status !== 'pending') {
+              setPaymentCompleted(true);
+            }
           } else if (userOffersFiltered.length > 0) {
             setOfferSubmitted(true);
           }
@@ -219,6 +225,7 @@ const LoanDetails = () => {
       variant: "default",
     });
     setIsPaymentDialogOpen(false);
+    setPaymentCompleted(true);
     // After payment is complete, prompt for rating
     setIsRatingDialogOpen(true);
   };
@@ -283,6 +290,73 @@ const LoanDetails = () => {
   const handleRepaymentResponseSent = () => {
     // Refresh the data after a response is sent
     window.location.reload();
+  };
+  
+  // Handle counter offer from lender side
+  const handleCounterOffer = async (offerId: string, amount: number, message: string) => {
+    try {
+      // First update the offer status to counter
+      await updateOfferStatus(offerId, 'counter');
+      
+      toast({
+        title: "Counter offer sent",
+        description: "Your counter offer has been sent to the borrower.",
+      });
+      
+      // Refresh the page
+      window.location.reload();
+    } catch (error) {
+      console.error('Error creating counter offer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send counter offer.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  // Handle accepting an offer as lender
+  const handleAcceptOfferAsLender = async (offerId: string, note?: string) => {
+    try {
+      await updateOfferStatus(offerId, 'accepted');
+      
+      toast({
+        title: "Offer accepted",
+        description: "You have accepted the borrower's offer.",
+      });
+      
+      // Refresh the page
+      window.location.reload();
+    } catch (error) {
+      console.error('Error accepting offer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to accept offer.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  // Handle declining an offer as lender
+  const handleDeclineOfferAsLender = async (offerId: string, note?: string) => {
+    try {
+      await updateOfferStatus(offerId, 'rejected');
+      
+      toast({
+        title: "Offer declined",
+        description: "You have declined the borrower's offer.",
+      });
+      
+      // Refresh the page
+      window.location.reload();
+    } catch (error) {
+      console.error('Error declining offer:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to decline offer.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Find an accepted offer for this loan
@@ -550,7 +624,7 @@ const LoanDetails = () => {
                           </Button>
                         </div>
                       </div>
-                    ) : offerAccepted ? (
+                    ) : offerAccepted && !paymentCompleted ? (
                       <Button 
                         className="w-full" 
                         onClick={openPaymentDialog}
@@ -558,6 +632,14 @@ const LoanDetails = () => {
                         <CreditCard className="mr-2 h-4 w-4" />
                         Complete Payment
                       </Button>
+                    ) : offerAccepted && paymentCompleted ? (
+                      <div className="p-4 rounded-md bg-green-50 text-green-700 border border-green-200">
+                        <h4 className="font-medium flex items-center gap-2 mb-1">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Payment Completed
+                        </h4>
+                        <p className="text-sm">Your payment has been processed. Waiting for borrower to propose repayment terms.</p>
+                      </div>
                     ) : (
                       <Button 
                         className="w-full" 
@@ -674,6 +756,7 @@ const LoanDetails = () => {
                           <div className={`mt-1 inline-block px-2 py-1 rounded-full text-xs font-medium ${
                             offer.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                             offer.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                            offer.status === 'counter' ? 'bg-blue-100 text-blue-800' :
                             'bg-red-100 text-red-800'
                           }`}>
                             {offer.status}

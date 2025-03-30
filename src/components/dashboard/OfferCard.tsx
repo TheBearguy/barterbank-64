@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { IndianRupee, MessageSquare, RefreshCw, Handshake, CreditCard } from 'lucide-react';
+import { IndianRupee, MessageSquare, RefreshCw, Handshake, CreditCard, CheckCircle, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface OfferCardProps {
@@ -25,6 +25,8 @@ interface OfferCardProps {
   onDecline?: (id: string, note?: string) => void;
   onCounter?: (id: string, amount: number, note: string) => void;
   onViewRepayment?: (id: string) => void;
+  paymentCompleted?: boolean;
+  isLender?: boolean;
 }
 
 const OfferCard = ({ 
@@ -43,7 +45,9 @@ const OfferCard = ({
   onAccept,
   onDecline,
   onCounter,
-  onViewRepayment
+  onViewRepayment,
+  paymentCompleted = false,
+  isLender = false
 }: OfferCardProps) => {
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [note, setNote] = useState('');
@@ -279,6 +283,74 @@ const OfferCard = ({
                 </Button>
               </>
             )}
+            
+            {/* Add counter offer buttons for lender side */}
+            {status === 'counter' && isLender && onAccept && onDecline && onCounter && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => onViewDetails(loanId)}
+                >
+                  View Details
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => onDecline(id)}
+                >
+                  Decline
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                    >
+                      Counter Again
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Make Counter Offer</h4>
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          <Input
+                            type="number"
+                            placeholder="Amount"
+                            className="pl-10"
+                            value={counterAmount}
+                            onChange={(e) => setCounterAmount(e.target.value)}
+                          />
+                        </div>
+                        <Textarea
+                          placeholder="Add details about your counter offer..."
+                          value={counterNote}
+                          onChange={(e) => setCounterNote(e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => setIsCounterPopoverOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleCounterOffer}>
+                          Send Counter
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <Button 
+                  size="sm" 
+                  onClick={() => onAccept(id)}
+                >
+                  Accept
+                </Button>
+              </>
+            )}
+            
             {status === 'accepted' && (
               <Button 
                 variant="outline" 
