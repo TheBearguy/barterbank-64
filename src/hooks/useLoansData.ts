@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,7 +90,6 @@ export function useLoansData() {
           if (loansError) throw loansError;
           setAvailableLoans(loans || []);
 
-          // Fixed query for lender's offers
           const { data: offers, error: offersError } = await supabase
             .from('offers')
             .select(`
@@ -102,7 +100,6 @@ export function useLoansData() {
 
           if (offersError) throw offersError;
           
-          // If we need borrower information for each loan, fetch it separately
           const offersWithBorrowers = await Promise.all((offers || []).map(async (offer) => {
             if (offer.loan && offer.loan.borrower_id) {
               const { data: borrowerData } = await supabase
@@ -168,10 +165,7 @@ export function useLoansData() {
     try {
       console.log(`Updating offer ${offerId} to status: ${status}`);
       
-      const updateData: { status: string; borrower_note?: string } = { status };
-      if (borrowerNote) {
-        updateData.borrower_note = borrowerNote;
-      }
+      const updateData: { status: string } = { status };
       
       const { error } = await supabase
         .from('offers')
