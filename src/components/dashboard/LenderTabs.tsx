@@ -35,6 +35,9 @@ const LenderTabs = ({ offers, availableLoans, onViewLoanDetails }: LenderTabsPro
                 status={offer.status}
                 offerDate={new Date(offer.created_at).toLocaleDateString()}
                 loanId={offer.loan_id}
+                message={offer.message}
+                borrowerNote={offer.borrower_note}
+                lenderName={offer.borrower?.name ? `To ${offer.borrower.name}` : undefined}
                 onViewDetails={onViewLoanDetails}
               />
             ))}
