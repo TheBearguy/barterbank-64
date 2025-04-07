@@ -10,11 +10,20 @@ import BorrowerTabs from '@/components/dashboard/BorrowerTabs';
 import LenderTabs from '@/components/dashboard/LenderTabs';
 import { useLoansData } from '@/hooks/useLoansData';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const { userLoans, availableLoans, receivedOffers, madeOffers, loading } = useLoansData();
+  const { toast } = useToast();
+  const { 
+    userLoans, 
+    availableLoans, 
+    receivedOffers, 
+    madeOffers, 
+    loading,
+    updateOfferStatus
+  } = useLoansData();
 
   // Redirect if not logged in
   if (!isAuthenticated) {
@@ -30,8 +39,45 @@ const Dashboard = () => {
     navigate(`/loans/${loanId}`);
   };
 
-  // Mock services data - in a real app, this would come from API
-  const services = [];
+  const handleViewRepayment = (offerId: string) => {
+    navigate(`/offers/${offerId}/repayment`);
+  };
+
+  const handleAcceptOffer = async (offerId: string, note?: string) => {
+    const success = await updateOfferStatus(offerId, 'accepted', note);
+    if (success) {
+      toast({
+        title: "Offer Accepted",
+        description: "You have accepted the offer. Borrower has been notified.",
+      });
+      // Refresh to update data
+      window.location.reload();
+    }
+  };
+
+  const handleDeclineOffer = async (offerId: string, note?: string) => {
+    const success = await updateOfferStatus(offerId, 'rejected', note);
+    if (success) {
+      toast({
+        title: "Offer Declined",
+        description: "You have declined the offer. Borrower has been notified.",
+      });
+      // Refresh to update data
+      window.location.reload();
+    }
+  };
+
+  const handleCounterOffer = async (offerId: string, amount: number, note: string) => {
+    const success = await updateOfferStatus(offerId, 'counter', note);
+    if (success) {
+      toast({
+        title: "Counter Offer Sent",
+        description: "Your counter offer has been sent to the borrower.",
+      });
+      // Refresh to update data
+      window.location.reload();
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -78,7 +124,6 @@ const Dashboard = () => {
             </div>
           ) : user?.user_metadata?.role === 'borrower' ? (
             <BorrowerTabs
-              services={services}
               onCreateLoan={handleCreateLoan}
               onViewLoanDetails={handleViewLoanDetails}
             />
@@ -87,6 +132,10 @@ const Dashboard = () => {
               offers={madeOffers || []}
               availableLoans={availableLoans || []}
               onViewLoanDetails={handleViewLoanDetails}
+              onViewRepayment={handleViewRepayment}
+              onAcceptOffer={handleAcceptOffer}
+              onDeclineOffer={handleDeclineOffer}
+              onCounterOffer={handleCounterOffer}
             />
           )}
         </div>

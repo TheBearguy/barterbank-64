@@ -24,6 +24,7 @@ export interface Service {
   title: string;
   description: string;
   value: number;
+  loanId: string;
 }
 
 export function useDashboardData() {
@@ -33,62 +34,62 @@ export function useDashboardData() {
   const [services, setServices] = useState<Service[]>([]);
   const [availableLoans, setAvailableLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Function to trigger a refresh of the data
+  const refreshData = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   useEffect(() => {
-    // This is a placeholder for actual data fetching logic
-    // In a real app, you would fetch this data from your backend
-    
-    // Mock data for now
-    const mockLoans: Loan[] = [];
-    const mockOffers: Offer[] = [];
-    const mockServices: Service[] = [];
-    
-    setUserLoans(mockLoans);
-    setOffers(mockOffers);
-    setServices(mockServices);
-    setAvailableLoans(mockLoans);
-    setLoading(false);
-    
-    // TODO: Replace with real data fetching
-    // const fetchData = async () => {
-    //   try {
-    //     if (user) {
-    //       // Fetch user loans
-    //       const { data: loans, error: loansError } = await supabase
-    //         .from('loans')
-    //         .select('*')
-    //         .eq('borrower_id', user.id);
-    //
-    //       if (loansError) throw loansError;
-    //       
-    //       // Format loans data
-    //       const formattedLoans = loans.map(loan => ({
-    //         id: loan.id,
-    //         amount: loan.amount,
-    //         status: loan.status,
-    //         requestDate: new Date(loan.created_at).toLocaleDateString(),
-    //         offersCount: 0, // This would need a count query in a real app
-    //       }));
-    //
-    //       setUserLoans(formattedLoans);
-    //
-    //       // Add more data fetching as needed
-    //     }
-    //   } catch (error) {
-    //     console.error('Error fetching dashboard data:', error);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-    //
-    // fetchData();
-  }, [user]);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        if (user) {
+          // Fetch services
+          const { data: servicesData, error: servicesError } = await supabase
+            .from('services')
+            .select(`
+              id,
+              name,
+              loan_id,
+              loans (
+                id,
+                amount,
+                description
+              )
+            `)
+            .order('created_at', { ascending: false });
+
+          if (servicesError) throw servicesError;
+
+          // Transform services data to match our interface
+          const formattedServices = servicesData.map(service => ({
+            id: service.id,
+            title: service.name,
+            description: service.loans?.description || '',
+            value: service.loans?.amount || 0,
+            loanId: service.loan_id
+          }));
+
+          setServices(formattedServices);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, refreshTrigger]);
 
   return {
     userLoans,
     offers,
     services,
     availableLoans,
-    loading
+    loading,
+    refreshData
   };
 }
