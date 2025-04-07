@@ -46,7 +46,7 @@ export function useDashboardData() {
       try {
         setLoading(true);
         if (user) {
-          // Fetch services
+          // Fetch services with their associated loans
           const { data: servicesData, error: servicesError } = await supabase
             .from('services')
             .select(`
@@ -59,9 +59,13 @@ export function useDashboardData() {
                 description
               )
             `)
+            .eq('loans.borrower_id', user.id)
             .order('created_at', { ascending: false });
 
-          if (servicesError) throw servicesError;
+          if (servicesError) {
+            console.error("Error fetching services:", servicesError);
+            throw servicesError;
+          }
 
           // Transform services data to match our interface
           const formattedServices = servicesData.map(service => ({
@@ -73,6 +77,7 @@ export function useDashboardData() {
           }));
 
           setServices(formattedServices);
+          console.log("Fetched services:", formattedServices);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);

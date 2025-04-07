@@ -47,31 +47,35 @@ const AddServiceModal = ({ open, onOpenChange, onServiceAdded }: AddServiceModal
     setIsSubmitting(true);
     
     try {
-      // Create a dummy loan to associate with the service
-      // In a real app, you might want to store services independently of loans
-      // or allow users to select an existing loan
+      // Create a loan record first with a valid status value (using 'pending' instead of 'service')
       const { data: loan, error: loanError } = await supabase
         .from('loans')
         .insert({
           borrower_id: user.id,
           amount: parseFloat(value) || 0,
           description: description || serviceName,
-          status: 'service' // Mark this loan as a service type
+          status: 'pending' // Using a valid status value that exists in the database schema
         })
         .select()
         .single();
 
       if (loanError) throw loanError;
 
+      console.log("Created loan:", loan);
+
       // Now create the service linked to this loan
-      const { error: serviceError } = await supabase
+      const { data: service, error: serviceError } = await supabase
         .from('services')
         .insert({
           name: serviceName,
-          loan_id: loan.id
-        });
+          loan_id: loan.id,
+          created_at: new Date().toISOString()
+        })
+        .select();
 
       if (serviceError) throw serviceError;
+
+      console.log("Created service:", service);
 
       toast({
         title: "Success",
