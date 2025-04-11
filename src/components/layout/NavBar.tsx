@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { Menu, X, User, LogOut, Mail } from 'lucide-react';
 
 const NavBar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -76,6 +76,13 @@ const NavBar: React.FC = () => {
               </Link>
             ))}
 
+            {isAuthenticated && (
+              <Link to="/messages" className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-primary transition-colors">
+                <Mail className="h-4 w-4 mr-1 inline" />
+                Messages
+              </Link>
+            )}
+
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
@@ -147,6 +154,13 @@ const NavBar: React.FC = () => {
                 {link.name}
               </Link>
             ))}
+
+            {isAuthenticated && (
+              <Link to="/messages" className="block py-2 text-base font-medium text-gray-700 dark:text-gray-200 hover:text-primary">
+                <Mail className="h-4 w-4 mr-1 inline" />
+                Messages
+              </Link>
+            )}
 
             {isAuthenticated ? (
               <>

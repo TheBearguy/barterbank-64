@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import LoanDetails from "./pages/LoanDetails";
 import CreateLoan from "./pages/CreateLoan";
 import Offers from "./pages/Offers";
 import NotFound from "./pages/NotFound";
+import Messages from '@/pages/Messages';
 
 // Add framer-motion
 import { motion, AnimatePresence } from "framer-motion";
@@ -111,6 +111,7 @@ const App = () => (
                   <Offers />
                 </motion.div>
               } />
+              <Route path="messages" element={<Messages />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
