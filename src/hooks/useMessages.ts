@@ -27,10 +27,9 @@ export function useMessages() {
         setLoading(true);
         setError(null);
         
-        // Fetch received messages (inbox) using raw SQL query
+        // Fetch received messages (inbox) using RPC
         const { data: inboxData, error: inboxError } = await supabase
-          .rpc('get_inbox_messages', { user_id: user.id })
-          .select('*');
+          .rpc('get_inbox_messages', { user_id: user.id });
           
         if (inboxError) throw inboxError;
         
@@ -49,10 +48,9 @@ export function useMessages() {
         
         setInboxMessages(formattedInbox);
         
-        // Fetch sent messages using raw SQL query
+        // Fetch sent messages using RPC
         const { data: sentData, error: sentError } = await supabase
-          .rpc('get_sent_messages', { user_id: user.id })
-          .select('*');
+          .rpc('get_sent_messages', { user_id: user.id });
           
         if (sentError) throw sentError;
         
@@ -92,8 +90,7 @@ export function useMessages() {
     try {
       // Find all users this user has had loan interactions with using a custom function
       const { data, error } = await supabase
-        .rpc('get_user_contacts', { user_id: user.id })
-        .select('id, name');
+        .rpc('get_user_contacts', { user_id: user.id });
         
       if (error) throw error;
       
