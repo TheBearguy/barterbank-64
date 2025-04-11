@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, UserRound, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Message } from './MessageList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/context/AuthContext';
 
 interface Recipient {
   id: string;
@@ -23,10 +24,15 @@ interface ComposeMessageProps {
 
 const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessageProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [recipientId, setRecipientId] = useState<string>(replyTo ? replyTo.sender_id : '');
   const [subject, setSubject] = useState<string>(replyTo ? `Re: ${replyTo.subject}` : '');
   const [content, setContent] = useState<string>(replyTo ? `\n\n--------\nOn ${new Date(replyTo.created_at).toLocaleString()}, ${replyTo.sender_name} wrote:\n${replyTo.content}` : '');
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Get user role
+  const userRole = user?.user_metadata?.role || '';
 
   useEffect(() => {
     if (replyTo) {
@@ -86,10 +92,17 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
     }
   };
 
+  // Filter recipients based on search term
+  const filteredRecipients = searchTerm
+    ? recipients.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    : recipients;
+
   return (
     <div className="p-4 bg-white dark:bg-gray-950 rounded-md shadow-md">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold">{replyTo ? "Reply" : "New Message"}</h2>
+        <h2 className="text-lg font-bold">
+          {replyTo ? "Reply" : "New Message"}
+        </h2>
         <Button variant="ghost" size="icon" onClick={onCancel}>
           <X className="h-4 w-4" />
         </Button>
@@ -98,18 +111,54 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
       <div className="space-y-4">
         <div>
           <Label htmlFor="recipient">To</Label>
-          <Select value={recipientId} onValueChange={setRecipientId} disabled={!!replyTo}>
-            <SelectTrigger id="recipient">
-              <SelectValue placeholder="Select recipient" />
-            </SelectTrigger>
-            <SelectContent>
-              {recipients.map((recipient) => (
-                <SelectItem key={recipient.id} value={recipient.id}>
-                  {recipient.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search recipients..." 
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            {!replyTo && (
+              <div className="border rounded-md max-h-48 overflow-y-auto">
+                {filteredRecipients.length > 0 ? (
+                  <ul className="divide-y">
+                    {filteredRecipients.map((recipient) => (
+                      <li 
+                        key={recipient.id}
+                        className={`p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
+                          recipientId === recipient.id ? 'bg-gray-50 dark:bg-gray-800' : ''
+                        }`}
+                        onClick={() => setRecipientId(recipient.id)}
+                      >
+                        <UserRound className="h-4 w-4 text-gray-400" />
+                        <span>{recipient.name}</span>
+                        {recipientId === recipient.id && (
+                          <span className="ml-auto text-xs bg-primary text-white px-1.5 py-0.5 rounded">
+                            Selected
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="p-4 text-center text-gray-500">
+                    {searchTerm ? 'No matching recipients found' : 'No recipients available'}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {replyTo && (
+              <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
+                <UserRound className="h-4 w-4 text-gray-400" />
+                <span>{replyTo.sender_name}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div>

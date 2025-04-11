@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
+    const { userId, userRole } = await req.json();
     
     // Create a Supabase client with the Auth context of the function
     const supabaseClient = createClient(
@@ -26,10 +26,37 @@ serve(async (req) => {
       }
     );
 
-    // Execute the stored function for getting user contacts
-    const { data, error } = await supabaseClient.rpc('get_user_contacts', {
-      user_id: userId
-    });
+    let data;
+    let error;
+
+    // Based on the user role, fetch either all lenders (for borrowers) or all borrowers (for lenders)
+    if (userRole === 'borrower') {
+      // Get all lenders
+      const result = await supabaseClient
+        .from('profiles')
+        .select('id, name')
+        .eq('role', 'lender');
+      
+      data = result.data;
+      error = result.error;
+    } else if (userRole === 'lender') {
+      // Get all borrowers
+      const result = await supabaseClient
+        .from('profiles')
+        .select('id, name')
+        .eq('role', 'borrower');
+      
+      data = result.data;
+      error = result.error;
+    } else {
+      // Fallback: use the original stored function
+      const result = await supabaseClient.rpc('get_user_contacts', {
+        user_id: userId
+      });
+      
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) throw error;
 

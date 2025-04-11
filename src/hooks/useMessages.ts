@@ -27,7 +27,10 @@ export function useMessages() {
         setLoading(true);
         setError(null);
         
-        // Using the SQL query directly via Supabase's stored procedures
+        // Get user role from metadata
+        const userRole = user.user_metadata?.role || '';
+        
+        // Using the SQL query directly via Supabase's edge functions
         const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
           body: { userId: user.id }
         });
@@ -49,7 +52,7 @@ export function useMessages() {
         
         setInboxMessages(formattedInbox);
         
-        // Using the SQL query directly via Supabase's stored procedures
+        // Using the SQL query directly via Supabase's edge functions
         const { data: sentData, error: sentError } = await supabase.functions.invoke('get-sent-messages', {
           body: { userId: user.id }
         });
@@ -72,8 +75,8 @@ export function useMessages() {
         
         setSentMessages(formattedSent);
         
-        // Fetch contacts for message composition
-        await fetchContacts();
+        // Fetch contacts for message composition, passing user role
+        await fetchContacts(userRole);
       } catch (err) {
         console.error('Error fetching messages:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -85,14 +88,17 @@ export function useMessages() {
     fetchMessages();
   }, [user, refreshTrigger]);
   
-  // Fetch all users that this user has interacted with
-  const fetchContacts = async () => {
+  // Fetch all users that this user can message based on their role
+  const fetchContacts = async (userRole: string) => {
     if (!user) return;
     
     try {
-      // Using SQL function through Supabase Edge Functions
+      // Using SQL function through Supabase Edge Functions, passing user role
       const { data, error } = await supabase.functions.invoke('get-user-contacts', {
-        body: { userId: user.id }
+        body: { 
+          userId: user.id,
+          userRole: userRole
+        }
       });
         
       if (error) throw error;
