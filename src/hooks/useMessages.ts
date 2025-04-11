@@ -31,50 +31,60 @@ export function useMessages() {
         const userRole = user.user_metadata?.role || '';
         console.log("User role:", userRole);
         
-        // Using the SQL query directly via Supabase's edge functions
-        const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
-          body: { userId: user.id }
-        });
+        try {
+          // Using the SQL query directly via Supabase's edge functions
+          const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
+            body: { userId: user.id }
+          });
+            
+          if (inboxError) throw inboxError;
           
-        if (inboxError) throw inboxError;
-        
-        // Format inbox messages
-        const formattedInbox = inboxData ? inboxData.map((msg: any) => ({
-          id: msg.id,
-          sender_id: msg.sender_id,
-          sender_name: msg.sender_name || 'Unknown',
-          recipient_id: msg.recipient_id,
-          subject: msg.subject,
-          content: msg.content,
-          created_at: msg.created_at,
-          read: msg.read,
-          reply_to: msg.reply_to
-        })) : [];
-        
-        setInboxMessages(formattedInbox);
-        
-        // Using the SQL query directly via Supabase's edge functions
-        const { data: sentData, error: sentError } = await supabase.functions.invoke('get-sent-messages', {
-          body: { userId: user.id }
-        });
+          // Format inbox messages
+          const formattedInbox = inboxData ? inboxData.map((msg: any) => ({
+            id: msg.id,
+            sender_id: msg.sender_id,
+            sender_name: msg.sender_name || 'Unknown',
+            recipient_id: msg.recipient_id,
+            subject: msg.subject,
+            content: msg.content,
+            created_at: msg.created_at,
+            read: msg.read,
+            reply_to: msg.reply_to
+          })) : [];
           
-        if (sentError) throw sentError;
+          setInboxMessages(formattedInbox);
+        } catch (inboxErr) {
+          console.error('Error fetching inbox messages:', inboxErr);
+          // Don't stop execution, continue to fetch other data
+        }
         
-        // Format sent messages
-        const formattedSent = sentData ? sentData.map((msg: any) => ({
-          id: msg.id,
-          sender_id: msg.sender_id,
-          sender_name: 'You',
-          recipient_id: msg.recipient_id,
-          recipient_name: msg.recipient_name || 'Unknown',
-          subject: msg.subject,
-          content: msg.content,
-          created_at: msg.created_at,
-          read: msg.read,
-          reply_to: msg.reply_to
-        })) : [];
-        
-        setSentMessages(formattedSent);
+        try {
+          // Using the SQL query directly via Supabase's edge functions
+          const { data: sentData, error: sentError } = await supabase.functions.invoke('get-sent-messages', {
+            body: { userId: user.id }
+          });
+            
+          if (sentError) throw sentError;
+          
+          // Format sent messages
+          const formattedSent = sentData ? sentData.map((msg: any) => ({
+            id: msg.id,
+            sender_id: msg.sender_id,
+            sender_name: 'You',
+            recipient_id: msg.recipient_id,
+            recipient_name: msg.recipient_name || 'Unknown',
+            subject: msg.subject,
+            content: msg.content,
+            created_at: msg.created_at,
+            read: msg.read,
+            reply_to: msg.reply_to
+          })) : [];
+          
+          setSentMessages(formattedSent);
+        } catch (sentErr) {
+          console.error('Error fetching sent messages:', sentErr);
+          // Don't stop execution, continue to fetch other data
+        }
         
         // Fetch contacts for message composition, passing user role
         await fetchContacts(userRole);
@@ -106,14 +116,39 @@ export function useMessages() {
       
       if (error) {
         console.error('Error from get-user-contacts function:', error);
-        throw error;
+        
+        // Fallback: fetch directly from profiles table
+        try {
+          console.log("Trying fallback direct database query for contacts");
+          const oppositeRole = userRole === 'lender' ? 'borrower' : 'lender';
+          
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('profiles')
+            .select('id, name')
+            .eq('role', oppositeRole);
+            
+          if (fallbackError) throw fallbackError;
+          
+          console.log("Fallback contacts query result:", fallbackData);
+          setContacts(fallbackData || []);
+          return;
+        } catch (fallbackErr) {
+          console.error("Fallback contacts query failed:", fallbackErr);
+          throw error; // Throw the original error if fallback also fails
+        }
       }
       
       // Log the fetched contacts to debug
       console.log("Contacts fetched:", data);
       
       if (Array.isArray(data)) {
-        setContacts(data);
+        // Make sure all entries have a name property
+        const processedContacts = data.map(contact => ({
+          id: contact.id,
+          name: contact.name || 'Unknown User'
+        }));
+        
+        setContacts(processedContacts);
       } else {
         console.warn("Contacts data is not an array:", data);
         setContacts([]);

@@ -94,10 +94,10 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
     }
   };
 
-  // Filter recipients based on search term
-  const filteredRecipients = searchTerm
-    ? recipients.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    : recipients;
+  // Case-insensitive filtering of recipients
+  const filteredRecipients = recipients.filter(r => 
+    !searchTerm || r.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="p-4 bg-white dark:bg-gray-950 rounded-md shadow-md">
@@ -128,27 +128,33 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
               <div className="border rounded-md max-h-48 overflow-y-auto">
                 {recipients.length > 0 ? (
                   <ul className="divide-y">
-                    {filteredRecipients.map((recipient) => (
-                      <li 
-                        key={recipient.id}
-                        className={`p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
-                          recipientId === recipient.id ? 'bg-gray-50 dark:bg-gray-800' : ''
-                        }`}
-                        onClick={() => setRecipientId(recipient.id)}
-                      >
-                        <UserRound className="h-4 w-4 text-gray-400" />
-                        <span>{recipient.name}</span>
-                        {recipientId === recipient.id && (
-                          <span className="ml-auto text-xs bg-primary text-white px-1.5 py-0.5 rounded">
-                            Selected
-                          </span>
-                        )}
+                    {filteredRecipients.length > 0 ? (
+                      filteredRecipients.map((recipient) => (
+                        <li 
+                          key={recipient.id}
+                          className={`p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
+                            recipientId === recipient.id ? 'bg-gray-50 dark:bg-gray-800' : ''
+                          }`}
+                          onClick={() => setRecipientId(recipient.id)}
+                        >
+                          <UserRound className="h-4 w-4 text-gray-400" />
+                          <span>{recipient.name || 'Unknown'}</span>
+                          {recipientId === recipient.id && (
+                            <span className="ml-auto text-xs bg-primary text-white px-1.5 py-0.5 rounded">
+                              Selected
+                            </span>
+                          )}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="p-4 text-center text-gray-500">
+                        No matching recipients found
                       </li>
-                    ))}
+                    )}
                   </ul>
                 ) : (
                   <div className="p-4 text-center text-gray-500">
-                    {searchTerm ? 'No matching recipients found' : 'No recipients available'}
+                    No recipients available
                   </div>
                 )}
               </div>
