@@ -27,11 +27,18 @@ export function useMessages() {
         setLoading(true);
         setError(null);
         
-        // Fetch received messages (inbox)
+        // Fetch received messages (inbox) using raw SQL query
         const { data: inboxData, error: inboxError } = await supabase
           .from('messages')
           .select(`
-            *,
+            id,
+            sender_id,
+            recipient_id,
+            subject,
+            content,
+            created_at,
+            read,
+            reply_to,
             sender:profiles!sender_id(id, name)
           `)
           .eq('recipient_id', user.id)
@@ -54,11 +61,18 @@ export function useMessages() {
         
         setInboxMessages(formattedInbox);
         
-        // Fetch sent messages
+        // Fetch sent messages using raw SQL query
         const { data: sentData, error: sentError } = await supabase
           .from('messages')
           .select(`
-            *,
+            id,
+            sender_id,
+            recipient_id,
+            subject,
+            content,
+            created_at,
+            read,
+            reply_to,
             recipient:profiles!recipient_id(id, name)
           `)
           .eq('sender_id', user.id)
@@ -72,6 +86,7 @@ export function useMessages() {
           sender_id: msg.sender_id,
           sender_name: 'You',
           recipient_id: msg.recipient_id,
+          recipient_name: msg.recipient?.name || 'Unknown',
           subject: msg.subject,
           content: msg.content,
           created_at: msg.created_at,
@@ -105,8 +120,8 @@ export function useMessages() {
         .select(`
           borrower_id,
           lender_id,
-          borrower:profiles!borrower_id(id, name, role),
-          lender:profiles!lender_id(id, name, role)
+          borrower:profiles!borrower_id(id, name),
+          lender:profiles!lender_id(id, name)
         `)
         .or(`borrower_id.eq.${user.id},lender_id.eq.${user.id}`);
         
