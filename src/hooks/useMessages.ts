@@ -29,70 +29,46 @@ export function useMessages() {
         
         // Fetch received messages (inbox) using raw SQL query
         const { data: inboxData, error: inboxError } = await supabase
-          .from('messages')
-          .select(`
-            id,
-            sender_id,
-            recipient_id,
-            subject,
-            content,
-            created_at,
-            read,
-            reply_to,
-            sender:profiles!sender_id(id, name)
-          `)
-          .eq('recipient_id', user.id)
-          .order('created_at', { ascending: false });
+          .rpc('get_inbox_messages', { user_id: user.id })
+          .select('*');
           
         if (inboxError) throw inboxError;
         
         // Format inbox messages
-        const formattedInbox = inboxData.map(msg => ({
+        const formattedInbox = inboxData ? inboxData.map((msg: any) => ({
           id: msg.id,
           sender_id: msg.sender_id,
-          sender_name: msg.sender?.name || 'Unknown',
+          sender_name: msg.sender_name || 'Unknown',
           recipient_id: msg.recipient_id,
           subject: msg.subject,
           content: msg.content,
           created_at: msg.created_at,
           read: msg.read,
           reply_to: msg.reply_to
-        }));
+        })) : [];
         
         setInboxMessages(formattedInbox);
         
         // Fetch sent messages using raw SQL query
         const { data: sentData, error: sentError } = await supabase
-          .from('messages')
-          .select(`
-            id,
-            sender_id,
-            recipient_id,
-            subject,
-            content,
-            created_at,
-            read,
-            reply_to,
-            recipient:profiles!recipient_id(id, name)
-          `)
-          .eq('sender_id', user.id)
-          .order('created_at', { ascending: false });
+          .rpc('get_sent_messages', { user_id: user.id })
+          .select('*');
           
         if (sentError) throw sentError;
         
         // Format sent messages
-        const formattedSent = sentData.map(msg => ({
+        const formattedSent = sentData ? sentData.map((msg: any) => ({
           id: msg.id,
           sender_id: msg.sender_id,
           sender_name: 'You',
           recipient_id: msg.recipient_id,
-          recipient_name: msg.recipient?.name || 'Unknown',
+          recipient_name: msg.recipient_name || 'Unknown',
           subject: msg.subject,
           content: msg.content,
           created_at: msg.created_at,
           read: msg.read,
           reply_to: msg.reply_to
-        }));
+        })) : [];
         
         setSentMessages(formattedSent);
         
@@ -114,41 +90,15 @@ export function useMessages() {
     if (!user) return;
     
     try {
-      // Find all users this user has had loan interactions with
-      const { data: loansData, error: loansError } = await supabase
-        .from('loans')
-        .select(`
-          borrower_id,
-          lender_id,
-          borrower:profiles!borrower_id(id, name),
-          lender:profiles!lender_id(id, name)
-        `)
-        .or(`borrower_id.eq.${user.id},lender_id.eq.${user.id}`);
+      // Find all users this user has had loan interactions with using a custom function
+      const { data, error } = await supabase
+        .rpc('get_user_contacts', { user_id: user.id })
+        .select('id, name');
         
-      if (loansError) throw loansError;
+      if (error) throw error;
       
-      // Extract unique contacts
-      const uniqueContacts = new Map();
-      
-      loansData.forEach(loan => {
-        // If user is borrower, add lender as contact
-        if (loan.borrower_id === user.id && loan.lender && loan.lender.id) {
-          uniqueContacts.set(loan.lender.id, {
-            id: loan.lender.id,
-            name: loan.lender.name
-          });
-        }
-        
-        // If user is lender, add borrower as contact
-        if (loan.lender_id === user.id && loan.borrower) {
-          uniqueContacts.set(loan.borrower.id, {
-            id: loan.borrower.id,
-            name: loan.borrower.name
-          });
-        }
-      });
-      
-      setContacts(Array.from(uniqueContacts.values()));
+      // Set contacts directly from the result
+      setContacts(data || []);
     } catch (err) {
       console.error('Error fetching contacts:', err);
     }
@@ -159,16 +109,14 @@ export function useMessages() {
     if (!user) return false;
     
     try {
+      // Use a custom function to insert the message
       const { error } = await supabase
-        .from('messages')
-        .insert({
-          sender_id: user.id,
-          recipient_id: recipientId,
-          subject,
-          content,
-          created_at: new Date().toISOString(),
-          read: false,
-          reply_to: replyToId
+        .rpc('send_message', { 
+          p_sender_id: user.id,
+          p_recipient_id: recipientId,
+          p_subject: subject,
+          p_content: content,
+          p_reply_to: replyToId || null
         });
         
       if (error) throw error;
@@ -184,10 +132,9 @@ export function useMessages() {
   // Mark a message as read
   const markAsRead = async (messageId: string) => {
     try {
+      // Use a custom function to mark the message as read
       const { error } = await supabase
-        .from('messages')
-        .update({ read: true })
-        .eq('id', messageId);
+        .rpc('mark_message_as_read', { message_id: messageId });
         
       if (error) throw error;
       
@@ -208,10 +155,9 @@ export function useMessages() {
   // Delete a message
   const deleteMessage = async (messageId: string) => {
     try {
+      // Use a custom function to delete the message
       const { error } = await supabase
-        .from('messages')
-        .delete()
-        .eq('id', messageId);
+        .rpc('delete_message', { message_id: messageId });
         
       if (error) throw error;
       

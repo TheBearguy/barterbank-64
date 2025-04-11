@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { PenSquare, Inbox, Send, Bell } from 'lucide-react';
 import NavBar from '@/components/layout/NavBar';
@@ -14,7 +14,7 @@ import ComposeMessage from '@/components/messaging/ComposeMessage';
 import { useToast } from '@/hooks/use-toast';
 
 const Messages = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { 
     inboxMessages, 
     sentMessages, 
