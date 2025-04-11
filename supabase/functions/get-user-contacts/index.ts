@@ -29,6 +29,9 @@ serve(async (req) => {
     let data;
     let error;
 
+    // Log the request parameters to help diagnose issues
+    console.log(`Fetching contacts for userId: ${userId}, userRole: ${userRole}`);
+
     // Based on the user role, fetch either all lenders (for borrowers) or all borrowers (for lenders)
     if (userRole === 'borrower') {
       // Get all lenders
@@ -39,6 +42,8 @@ serve(async (req) => {
       
       data = result.data;
       error = result.error;
+      
+      console.log(`Found ${data?.length || 0} lenders`);
     } else if (userRole === 'lender') {
       // Get all borrowers
       const result = await supabaseClient
@@ -48,6 +53,8 @@ serve(async (req) => {
       
       data = result.data;
       error = result.error;
+      
+      console.log(`Found ${data?.length || 0} borrowers`);
     } else {
       // Fallback: use the original stored function
       const result = await supabaseClient.rpc('get_user_contacts', {
@@ -58,13 +65,18 @@ serve(async (req) => {
       error = result.error;
     }
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching contacts:", error);
+      throw error;
+    }
 
-    return new Response(JSON.stringify(data), {
+    // Return empty array instead of null if no contacts found
+    return new Response(JSON.stringify(data || []), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
+    console.error("Function error:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,

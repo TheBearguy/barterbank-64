@@ -29,6 +29,7 @@ export function useMessages() {
         
         // Get user role from metadata
         const userRole = user.user_metadata?.role || '';
+        console.log("User role:", userRole);
         
         // Using the SQL query directly via Supabase's edge functions
         const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
@@ -93,6 +94,8 @@ export function useMessages() {
     if (!user) return;
     
     try {
+      console.log("Fetching contacts with role:", userRole);
+      
       // Using SQL function through Supabase Edge Functions, passing user role
       const { data, error } = await supabase.functions.invoke('get-user-contacts', {
         body: { 
@@ -100,9 +103,10 @@ export function useMessages() {
           userRole: userRole
         }
       });
-        
+      
       if (error) throw error;
       
+      console.log("Contacts fetched:", data);
       setContacts(data || []);
     } catch (err) {
       console.error('Error fetching contacts:', err);

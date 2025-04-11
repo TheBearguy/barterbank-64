@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Message } from './MessageList';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
 
 interface Recipient {
@@ -35,12 +34,15 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
   const userRole = user?.user_metadata?.role || '';
 
   useEffect(() => {
+    // Log available recipients for debugging
+    console.log("Available recipients:", recipients);
+    
     if (replyTo) {
       setRecipientId(replyTo.sender_id);
       setSubject(`Re: ${replyTo.subject}`);
       setContent(`\n\n--------\nOn ${new Date(replyTo.created_at).toLocaleString()}, ${replyTo.sender_name} wrote:\n${replyTo.content}`);
     }
-  }, [replyTo]);
+  }, [replyTo, recipients]);
 
   const handleSend = async () => {
     if (!recipientId) {
