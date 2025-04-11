@@ -27,11 +27,10 @@ export function useMessages() {
         setLoading(true);
         setError(null);
         
-        // Fetch received messages (inbox) using RPC without select
-        const { data: inboxData, error: inboxError } = await supabase.rpc(
-          'get_inbox_messages', 
-          { user_id: user.id }
-        );
+        // Using the SQL query directly via Supabase's stored procedures
+        const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
+          body: { userId: user.id }
+        });
           
         if (inboxError) throw inboxError;
         
@@ -50,11 +49,10 @@ export function useMessages() {
         
         setInboxMessages(formattedInbox);
         
-        // Fetch sent messages using RPC without select
-        const { data: sentData, error: sentError } = await supabase.rpc(
-          'get_sent_messages', 
-          { user_id: user.id }
-        );
+        // Using the SQL query directly via Supabase's stored procedures
+        const { data: sentData, error: sentError } = await supabase.functions.invoke('get-sent-messages', {
+          body: { userId: user.id }
+        });
           
         if (sentError) throw sentError;
         
@@ -92,11 +90,10 @@ export function useMessages() {
     if (!user) return;
     
     try {
-      // Using RPC without select
-      const { data, error } = await supabase.rpc(
-        'get_user_contacts', 
-        { user_id: user.id }
-      );
+      // Using SQL function through Supabase Edge Functions
+      const { data, error } = await supabase.functions.invoke('get-user-contacts', {
+        body: { userId: user.id }
+      });
         
       if (error) throw error;
       
@@ -111,17 +108,16 @@ export function useMessages() {
     if (!user) return false;
     
     try {
-      // Use RPC without select
-      const { error } = await supabase.rpc(
-        'send_message', 
-        { 
-          p_sender_id: user.id,
-          p_recipient_id: recipientId,
-          p_subject: subject,
-          p_content: content,
-          p_reply_to: replyToId || null
+      // Use SQL function through Edge Functions
+      const { error } = await supabase.functions.invoke('send-message', {
+        body: { 
+          senderId: user.id,
+          recipientId,
+          subject,
+          content,
+          replyToId: replyToId || null
         }
-      );
+      });
         
       if (error) throw error;
       
@@ -136,11 +132,10 @@ export function useMessages() {
   // Mark a message as read
   const markAsRead = async (messageId: string) => {
     try {
-      // Use RPC without select
-      const { error } = await supabase.rpc(
-        'mark_message_as_read', 
-        { message_id: messageId }
-      );
+      // Use SQL function through Edge Functions
+      const { error } = await supabase.functions.invoke('mark-message-as-read', {
+        body: { messageId }
+      });
         
       if (error) throw error;
       
@@ -161,11 +156,10 @@ export function useMessages() {
   // Delete a message
   const deleteMessage = async (messageId: string) => {
     try {
-      // Use RPC without select
-      const { error } = await supabase.rpc(
-        'delete_message', 
-        { message_id: messageId }
-      );
+      // Use SQL function through Edge Functions
+      const { error } = await supabase.functions.invoke('delete-message', {
+        body: { messageId }
+      });
         
       if (error) throw error;
       
