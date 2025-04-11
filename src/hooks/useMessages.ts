@@ -27,9 +27,11 @@ export function useMessages() {
         setLoading(true);
         setError(null);
         
-        // Fetch received messages (inbox) using RPC
-        const { data: inboxData, error: inboxError } = await supabase
-          .rpc('get_inbox_messages', { user_id: user.id });
+        // Fetch received messages (inbox) using RPC without select
+        const { data: inboxData, error: inboxError } = await supabase.rpc(
+          'get_inbox_messages', 
+          { user_id: user.id }
+        );
           
         if (inboxError) throw inboxError;
         
@@ -48,9 +50,11 @@ export function useMessages() {
         
         setInboxMessages(formattedInbox);
         
-        // Fetch sent messages using RPC
-        const { data: sentData, error: sentError } = await supabase
-          .rpc('get_sent_messages', { user_id: user.id });
+        // Fetch sent messages using RPC without select
+        const { data: sentData, error: sentError } = await supabase.rpc(
+          'get_sent_messages', 
+          { user_id: user.id }
+        );
           
         if (sentError) throw sentError;
         
@@ -88,13 +92,14 @@ export function useMessages() {
     if (!user) return;
     
     try {
-      // Find all users this user has had loan interactions with using a custom function
-      const { data, error } = await supabase
-        .rpc('get_user_contacts', { user_id: user.id });
+      // Using RPC without select
+      const { data, error } = await supabase.rpc(
+        'get_user_contacts', 
+        { user_id: user.id }
+      );
         
       if (error) throw error;
       
-      // Set contacts directly from the result
       setContacts(data || []);
     } catch (err) {
       console.error('Error fetching contacts:', err);
@@ -106,15 +111,17 @@ export function useMessages() {
     if (!user) return false;
     
     try {
-      // Use a custom function to insert the message
-      const { error } = await supabase
-        .rpc('send_message', { 
+      // Use RPC without select
+      const { error } = await supabase.rpc(
+        'send_message', 
+        { 
           p_sender_id: user.id,
           p_recipient_id: recipientId,
           p_subject: subject,
           p_content: content,
           p_reply_to: replyToId || null
-        });
+        }
+      );
         
       if (error) throw error;
       
@@ -129,9 +136,11 @@ export function useMessages() {
   // Mark a message as read
   const markAsRead = async (messageId: string) => {
     try {
-      // Use a custom function to mark the message as read
-      const { error } = await supabase
-        .rpc('mark_message_as_read', { message_id: messageId });
+      // Use RPC without select
+      const { error } = await supabase.rpc(
+        'mark_message_as_read', 
+        { message_id: messageId }
+      );
         
       if (error) throw error;
       
@@ -152,9 +161,11 @@ export function useMessages() {
   // Delete a message
   const deleteMessage = async (messageId: string) => {
     try {
-      // Use a custom function to delete the message
-      const { error } = await supabase
-        .rpc('delete_message', { message_id: messageId });
+      // Use RPC without select
+      const { error } = await supabase.rpc(
+        'delete_message', 
+        { message_id: messageId }
+      );
         
       if (error) throw error;
       
