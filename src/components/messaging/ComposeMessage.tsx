@@ -126,7 +126,7 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
             
             {!replyTo && (
               <div className="border rounded-md max-h-48 overflow-y-auto">
-                {filteredRecipients.length > 0 ? (
+                {recipients.length > 0 ? (
                   <ul className="divide-y">
                     {filteredRecipients.map((recipient) => (
                       <li 

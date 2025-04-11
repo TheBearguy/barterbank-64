@@ -14,7 +14,7 @@ import ComposeMessage from '@/components/messaging/ComposeMessage';
 import { useToast } from '@/hooks/use-toast';
 
 const Messages = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { 
     inboxMessages, 
     sentMessages, 
@@ -22,7 +22,8 @@ const Messages = () => {
     loading, 
     sendMessage, 
     markAsRead, 
-    deleteMessage 
+    deleteMessage,
+    refreshMessages
   } = useMessages();
   const { toast } = useToast();
   
@@ -98,6 +99,10 @@ const Messages = () => {
   
   const currentMessages = selectedTab === 'inbox' ? inboxMessages : sentMessages;
   const unreadCount = inboxMessages.filter(msg => !msg.read).length;
+  
+  // For debugging
+  console.log('User role:', user?.user_metadata?.role);
+  console.log('Available contacts:', contacts);
   
   return (
     <div className="min-h-screen flex flex-col">

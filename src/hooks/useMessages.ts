@@ -104,12 +104,23 @@ export function useMessages() {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error from get-user-contacts function:', error);
+        throw error;
+      }
       
+      // Log the fetched contacts to debug
       console.log("Contacts fetched:", data);
-      setContacts(data || []);
+      
+      if (Array.isArray(data)) {
+        setContacts(data);
+      } else {
+        console.warn("Contacts data is not an array:", data);
+        setContacts([]);
+      }
     } catch (err) {
       console.error('Error fetching contacts:', err);
+      setContacts([]);
     }
   };
   

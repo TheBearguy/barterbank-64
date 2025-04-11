@@ -35,6 +35,7 @@ serve(async (req) => {
     // Based on the user role, fetch either all lenders (for borrowers) or all borrowers (for lenders)
     if (userRole === 'borrower') {
       // Get all lenders
+      console.log("Fetching all lenders for borrower");
       const result = await supabaseClient
         .from('profiles')
         .select('id, name')
@@ -43,9 +44,10 @@ serve(async (req) => {
       data = result.data;
       error = result.error;
       
-      console.log(`Found ${data?.length || 0} lenders`);
+      console.log(`Found ${data?.length || 0} lenders, Error: ${error ? JSON.stringify(error) : 'None'}`);
     } else if (userRole === 'lender') {
       // Get all borrowers
+      console.log("Fetching all borrowers for lender");
       const result = await supabaseClient
         .from('profiles')
         .select('id, name')
@@ -54,15 +56,21 @@ serve(async (req) => {
       data = result.data;
       error = result.error;
       
-      console.log(`Found ${data?.length || 0} borrowers`);
+      console.log(`Found ${data?.length || 0} borrowers, Error: ${error ? JSON.stringify(error) : 'None'}`);
+      
+      // Debugging: Log the raw data returned
+      console.log("Raw result:", JSON.stringify(result));
     } else {
       // Fallback: use the original stored function
+      console.log("Using fallback get_user_contacts RPC function");
       const result = await supabaseClient.rpc('get_user_contacts', {
         user_id: userId
       });
       
       data = result.data;
       error = result.error;
+      
+      console.log(`Fallback result: ${data ? JSON.stringify(data) : 'None'}, Error: ${error ? JSON.stringify(error) : 'None'}`);
     }
 
     if (error) {
@@ -71,6 +79,7 @@ serve(async (req) => {
     }
 
     // Return empty array instead of null if no contacts found
+    console.log("Returning contacts:", JSON.stringify(data || []));
     return new Response(JSON.stringify(data || []), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
