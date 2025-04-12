@@ -21,7 +21,9 @@ export const fetchInboxMessages = async (userId: string): Promise<Message[]> => 
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: direct RPC call to get_inbox_messages function
-      const { data, error } = await supabase.rpc('get_inbox_messages', { user_id: userId });
+      const { data, error } = await supabase.rpc('get_inbox_messages', { 
+        user_id: userId 
+      });
         
       if (error) {
         console.error('RPC error:', error);
@@ -57,7 +59,9 @@ export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: direct RPC call to get_sent_messages function
-      const { data, error } = await supabase.rpc('get_sent_messages', { user_id: userId });
+      const { data, error } = await supabase.rpc('get_sent_messages', { 
+        user_id: userId 
+      });
         
       if (error) {
         console.error('RPC error:', error);
@@ -201,7 +205,7 @@ export const sendMessageToUser = async (
   try {
     // Try Edge Function first
     try {
-      const { data, error } = await supabase.functions.invoke('send-message', {
+      const response = await supabase.functions.invoke('send-message', {
         body: { 
           senderId,
           recipientId,
@@ -210,22 +214,30 @@ export const sendMessageToUser = async (
           replyToId: replyToId || null
         }
       });
-        
-      if (error) throw error;
+      
+      if (response.error) {
+        console.error('Edge function error:', response.error);
+        throw response.error;
+      }
+      
       return true;
     } catch (functionError) {
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: Use RPC function
-      const { data, error } = await supabase.rpc('send_message', {
+      const response = await supabase.rpc('send_message', {
         p_sender_id: senderId,
         p_recipient_id: recipientId,
         p_subject: subject,
         p_content: content,
         p_reply_to: replyToId || null
       });
-        
-      if (error) throw error;
+      
+      if (response.error) {
+        console.error('RPC error:', response.error);
+        throw response.error;
+      }
+      
       return true;
     }
   } catch (err) {
@@ -241,20 +253,26 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
   try {
     // Try Edge Function first
     try {
-      const { data, error } = await supabase.functions.invoke('mark-message-as-read', {
+      const response = await supabase.functions.invoke('mark-message-as-read', {
         body: { messageId }
       });
-        
-      if (error) throw error;
+      
+      if (response.error) {
+        console.error('Edge function error:', response.error);
+        throw response.error;
+      }
+      
       return true;
     } catch (functionError) {
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: Use direct RPC call to the stored procedure
-      const { data, error } = await supabase.rpc('mark_message_as_read', { message_id: messageId });
+      const response = await supabase.rpc('mark_message_as_read', { 
+        message_id: messageId 
+      });
       
-      if (error) {
-        console.error('RPC error:', error);
+      if (response.error) {
+        console.error('RPC error:', response.error);
         return false;
       }
       
@@ -273,20 +291,26 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
   try {
     // Try Edge Function first
     try {
-      const { data, error } = await supabase.functions.invoke('delete-message', {
+      const response = await supabase.functions.invoke('delete-message', {
         body: { messageId }
       });
-        
-      if (error) throw error;
+      
+      if (response.error) {
+        console.error('Edge function error:', response.error);
+        throw response.error;
+      }
+      
       return true;
     } catch (functionError) {
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: Use RPC call to the stored procedure
-      const { data, error } = await supabase.rpc('delete_message', { message_id: messageId });
+      const response = await supabase.rpc('delete_message', { 
+        message_id: messageId 
+      });
       
-      if (error) {
-        console.error('RPC error:', error);
+      if (response.error) {
+        console.error('RPC error:', response.error);
         return false;
       }
       
@@ -297,4 +321,3 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
     return false;
   }
 };
-
