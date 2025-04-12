@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Message } from '@/components/messaging/MessageList';
 import { useContacts } from '@/hooks/useContacts';
+import { useToast } from '@/hooks/use-toast';
 import { 
   fetchInboxMessages,
   fetchSentMessages,
@@ -14,6 +15,7 @@ import {
 export function useMessages() {
   const { user } = useAuth();
   const { contacts } = useContacts();
+  const { toast } = useToast();
   const [inboxMessages, setInboxMessages] = useState<Message[]>([]);
   const [sentMessages, setSentMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,52 +47,103 @@ export function useMessages() {
       } catch (err) {
         console.error('Error fetching messages:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        toast({
+          title: "Error",
+          description: "Failed to load messages. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
     };
     
     fetchMessages();
-  }, [user, refreshTrigger]);
+  }, [user, refreshTrigger, toast]);
   
   // Send a message
   const sendMessage = async (subject: string, content: string, recipientId: string, replyToId?: string) => {
     if (!user) return false;
     
-    const success = await sendMessageToUser(user.id, recipientId, subject, content, replyToId);
-    if (success) {
-      refreshMessages();
+    try {
+      const success = await sendMessageToUser(user.id, recipientId, subject, content, replyToId);
+      
+      if (success) {
+        refreshMessages();
+        toast({
+          title: "Success",
+          description: "Message sent successfully",
+        });
+      } else {
+        throw new Error("Failed to send message");
+      }
+      
+      return success;
+    } catch (error) {
+      console.error("Error in sendMessage:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+      return false;
     }
-    return success;
   };
   
   // Mark a message as read
   const markAsRead = async (messageId: string) => {
-    const success = await markMessageAsRead(messageId);
-    
-    if (success) {
-      // Update local state
-      setInboxMessages(prevMessages => 
-        prevMessages.map(msg => 
-          msg.id === messageId ? { ...msg, read: true } : msg
-        )
-      );
+    try {
+      const success = await markMessageAsRead(messageId);
+      
+      if (success) {
+        // Update local state
+        setInboxMessages(prevMessages => 
+          prevMessages.map(msg => 
+            msg.id === messageId ? { ...msg, read: true } : msg
+          )
+        );
+        return true;
+      } else {
+        throw new Error("Failed to mark message as read");
+      }
+    } catch (error) {
+      console.error("Error in markAsRead:", error);
+      toast({
+        title: "Error",
+        description: "Failed to mark message as read.",
+        variant: "destructive"
+      });
+      return false;
     }
-    
-    return success;
   };
   
   // Delete a message
   const deleteMessage = async (messageId: string) => {
-    const success = await deleteUserMessage(messageId);
-    
-    if (success) {
-      // Update local state
-      setInboxMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
-      setSentMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+    try {
+      const success = await deleteUserMessage(messageId);
+      
+      if (success) {
+        // Update local state
+        setInboxMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+        setSentMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+        
+        toast({
+          title: "Success",
+          description: "Message deleted successfully",
+        });
+        
+        return true;
+      } else {
+        throw new Error("Failed to delete message");
+      }
+    } catch (error) {
+      console.error("Error in deleteMessage:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete message. Please try again.",
+        variant: "destructive"
+      });
+      return false;
     }
-    
-    return success;
   };
   
   return {

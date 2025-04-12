@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Inbox, Send, PenSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMessages } from '@/hooks/useMessages';
@@ -14,9 +14,17 @@ interface MessageTabsProps {
   selectedTab: string;
   unreadCount: number;
   onTabChange: (tab: string) => void;
+  isComposing?: boolean;
+  setIsComposing?: (isComposing: boolean) => void;
 }
 
-const MessageTabs = ({ selectedTab, unreadCount, onTabChange }: MessageTabsProps) => {
+const MessageTabs = ({ 
+  selectedTab, 
+  unreadCount, 
+  onTabChange, 
+  isComposing = false,
+  setIsComposing = () => {}
+}: MessageTabsProps) => {
   const { 
     inboxMessages, 
     sentMessages, 
@@ -28,8 +36,18 @@ const MessageTabs = ({ selectedTab, unreadCount, onTabChange }: MessageTabsProps
   const { toast } = useToast();
   
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [isComposing, setIsComposing] = useState(false);
+  const [localIsComposing, setLocalIsComposing] = useState(isComposing);
   const [isReplying, setIsReplying] = useState(false);
+  
+  // Sync with parent component's state
+  useEffect(() => {
+    setLocalIsComposing(isComposing);
+  }, [isComposing]);
+  
+  // Notify parent component when state changes
+  useEffect(() => {
+    setIsComposing(localIsComposing);
+  }, [localIsComposing, setIsComposing]);
   
   const handleMessageSelect = async (message: Message) => {
     setSelectedMessage(message);
@@ -43,47 +61,47 @@ const MessageTabs = ({ selectedTab, unreadCount, onTabChange }: MessageTabsProps
   const handleComposeNew = () => {
     setSelectedMessage(null);
     setIsReplying(false);
-    setIsComposing(true);
+    setLocalIsComposing(true);
   };
   
   const handleReply = (message: Message) => {
     setIsReplying(true);
-    setIsComposing(true);
+    setLocalIsComposing(true);
   };
   
   const handleCancelCompose = () => {
-    setIsComposing(false);
+    setLocalIsComposing(false);
     setIsReplying(false);
   };
   
   const handleSendMessage = async (subject: string, content: string, recipientId: string, replyToId?: string) => {
-    const success = await sendMessage(subject, content, recipientId, replyToId);
-    
-    if (success) {
-      setIsComposing(false);
-      setIsReplying(false);
-      onTabChange('sent'); // Switch to sent tab after sending
-      return true;
+    try {
+      const success = await sendMessage(subject, content, recipientId, replyToId);
+      
+      if (success) {
+        setLocalIsComposing(false);
+        setIsReplying(false);
+        onTabChange('sent'); // Switch to sent tab after sending
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Error in handleSendMessage:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+      return false;
     }
-    
-    return false;
   };
   
   const handleDeleteMessage = async (messageId: string) => {
     const success = await deleteMessage(messageId);
     
     if (success) {
-      toast({
-        title: "Message deleted",
-        description: "The message has been deleted successfully",
-      });
       setSelectedMessage(null);
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to delete message",
-        variant: "destructive"
-      });
     }
   };
   
@@ -125,7 +143,7 @@ const MessageTabs = ({ selectedTab, unreadCount, onTabChange }: MessageTabsProps
         </div>
         
         <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-md shadow overflow-hidden min-h-[600px]">
-          {isComposing ? (
+          {localIsComposing ? (
             <ComposeMessage 
               recipients={contacts} 
               onSend={handleSendMessage}

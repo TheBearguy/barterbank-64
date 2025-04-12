@@ -8,11 +8,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useMessages } from '@/hooks/useMessages';
 import { Button } from '@/components/ui/button';
 import MessageTabs from '@/components/messaging/MessageTabs';
+import { useToast } from '@/hooks/use-toast';
 
 const Messages = () => {
   const { isAuthenticated, user } = useAuth();
-  const { inboxMessages, loading } = useMessages();
+  const { inboxMessages, loading, refreshMessages } = useMessages();
   const [selectedTab, setSelectedTab] = useState('inbox');
+  const { toast } = useToast();
+  const [isComposing, setIsComposing] = useState(false);
   
   // Redirect if not logged in
   if (!isAuthenticated) {
@@ -21,8 +24,17 @@ const Messages = () => {
   
   const unreadCount = inboxMessages.filter(msg => !msg.read).length;
   
-  // For debugging
-  console.log('User role:', user?.user_metadata?.role);
+  const handleComposeNew = () => {
+    setIsComposing(true);
+  };
+  
+  const handleRefresh = () => {
+    refreshMessages();
+    toast({
+      title: "Refreshed",
+      description: "Messages have been refreshed",
+    });
+  };
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -38,6 +50,19 @@ const Messages = () => {
                 </span>
               )}
             </h1>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={handleRefresh} 
+                className="flex items-center gap-2"
+              >
+                Refresh
+              </Button>
+              <Button onClick={handleComposeNew} className="flex items-center gap-2">
+                <PenSquare className="h-4 w-4" />
+                New Message
+              </Button>
+            </div>
           </div>
           
           {loading ? (
@@ -49,6 +74,8 @@ const Messages = () => {
               selectedTab={selectedTab} 
               unreadCount={unreadCount} 
               onTabChange={setSelectedTab} 
+              isComposing={isComposing}
+              setIsComposing={setIsComposing}
             />
           )}
         </div>
