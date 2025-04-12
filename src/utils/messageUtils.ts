@@ -156,7 +156,7 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
     } catch (functionError) {
       console.error('Edge function error, trying direct query:', functionError);
       
-      // Fallback: fetch directly from profiles table
+      // Fallback: fetch directly from profiles table based on opposite role
       const oppositeRole = userRole === 'lender' ? 'borrower' : 'lender';
       
       const { data, error } = await supabase
