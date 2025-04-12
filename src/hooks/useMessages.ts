@@ -1,16 +1,23 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { Message } from '@/components/messaging/MessageList';
+import { useContacts } from '@/hooks/useContacts';
+import { 
+  fetchInboxMessages,
+  fetchSentMessages,
+  sendMessageToUser,
+  markMessageAsRead,
+  deleteUserMessage
+} from '@/utils/messageUtils';
 
 export function useMessages() {
   const { user } = useAuth();
+  const { contacts } = useContacts();
   const [inboxMessages, setInboxMessages] = useState<Message[]>([]);
   const [sentMessages, setSentMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [contacts, setContacts] = useState<{id: string, name: string}[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Function to trigger a refresh of the messages
@@ -27,67 +34,14 @@ export function useMessages() {
         setLoading(true);
         setError(null);
         
-        // Get user role from metadata
-        const userRole = user.user_metadata?.role || '';
-        console.log("User role:", userRole);
+        // Load inbox messages
+        const inbox = await fetchInboxMessages(user.id);
+        setInboxMessages(inbox);
         
-        try {
-          // Using the SQL query directly via Supabase's edge functions
-          const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
-            body: { userId: user.id }
-          });
-            
-          if (inboxError) throw inboxError;
-          
-          // Format inbox messages
-          const formattedInbox = inboxData ? inboxData.map((msg: any) => ({
-            id: msg.id,
-            sender_id: msg.sender_id,
-            sender_name: msg.sender_name || 'Unknown',
-            recipient_id: msg.recipient_id,
-            subject: msg.subject,
-            content: msg.content,
-            created_at: msg.created_at,
-            read: msg.read,
-            reply_to: msg.reply_to
-          })) : [];
-          
-          setInboxMessages(formattedInbox);
-        } catch (inboxErr) {
-          console.error('Error fetching inbox messages:', inboxErr);
-          // Don't stop execution, continue to fetch other data
-        }
+        // Load sent messages
+        const sent = await fetchSentMessages(user.id);
+        setSentMessages(sent);
         
-        try {
-          // Using the SQL query directly via Supabase's edge functions
-          const { data: sentData, error: sentError } = await supabase.functions.invoke('get-sent-messages', {
-            body: { userId: user.id }
-          });
-            
-          if (sentError) throw sentError;
-          
-          // Format sent messages
-          const formattedSent = sentData ? sentData.map((msg: any) => ({
-            id: msg.id,
-            sender_id: msg.sender_id,
-            sender_name: 'You',
-            recipient_id: msg.recipient_id,
-            recipient_name: msg.recipient_name || 'Unknown',
-            subject: msg.subject,
-            content: msg.content,
-            created_at: msg.created_at,
-            read: msg.read,
-            reply_to: msg.reply_to
-          })) : [];
-          
-          setSentMessages(formattedSent);
-        } catch (sentErr) {
-          console.error('Error fetching sent messages:', sentErr);
-          // Don't stop execution, continue to fetch other data
-        }
-        
-        // Fetch contacts for message composition, passing user role
-        await fetchContacts(userRole);
       } catch (err) {
         console.error('Error fetching messages:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -99,135 +53,44 @@ export function useMessages() {
     fetchMessages();
   }, [user, refreshTrigger]);
   
-  // Fetch all users that this user can message based on their role
-  const fetchContacts = async (userRole: string) => {
-    if (!user) return;
-    
-    try {
-      console.log("Fetching contacts with role:", userRole);
-      
-      // Using SQL function through Supabase Edge Functions, passing user role
-      const { data, error } = await supabase.functions.invoke('get-user-contacts', {
-        body: { 
-          userId: user.id,
-          userRole: userRole
-        }
-      });
-      
-      if (error) {
-        console.error('Error from get-user-contacts function:', error);
-        
-        // Fallback: fetch directly from profiles table
-        try {
-          console.log("Trying fallback direct database query for contacts");
-          const oppositeRole = userRole === 'lender' ? 'borrower' : 'lender';
-          
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('profiles')
-            .select('id, name')
-            .eq('role', oppositeRole);
-            
-          if (fallbackError) throw fallbackError;
-          
-          console.log("Fallback contacts query result:", fallbackData);
-          setContacts(fallbackData || []);
-          return;
-        } catch (fallbackErr) {
-          console.error("Fallback contacts query failed:", fallbackErr);
-          throw error; // Throw the original error if fallback also fails
-        }
-      }
-      
-      // Log the fetched contacts to debug
-      console.log("Contacts fetched:", data);
-      
-      if (Array.isArray(data)) {
-        // Make sure all entries have a name property
-        const processedContacts = data.map(contact => ({
-          id: contact.id,
-          name: contact.name || 'Unknown User'
-        }));
-        
-        setContacts(processedContacts);
-      } else {
-        console.warn("Contacts data is not an array:", data);
-        setContacts([]);
-      }
-    } catch (err) {
-      console.error('Error fetching contacts:', err);
-      setContacts([]);
-    }
-  };
-  
   // Send a message
   const sendMessage = async (subject: string, content: string, recipientId: string, replyToId?: string) => {
     if (!user) return false;
     
-    try {
-      // Use SQL function through Edge Functions
-      const { error } = await supabase.functions.invoke('send-message', {
-        body: { 
-          senderId: user.id,
-          recipientId,
-          subject,
-          content,
-          replyToId: replyToId || null
-        }
-      });
-        
-      if (error) throw error;
-      
+    const success = await sendMessageToUser(user.id, recipientId, subject, content, replyToId);
+    if (success) {
       refreshMessages();
-      return true;
-    } catch (err) {
-      console.error('Error sending message:', err);
-      return false;
     }
+    return success;
   };
   
   // Mark a message as read
   const markAsRead = async (messageId: string) => {
-    try {
-      // Use SQL function through Edge Functions
-      const { error } = await supabase.functions.invoke('mark-message-as-read', {
-        body: { messageId }
-      });
-        
-      if (error) throw error;
-      
+    const success = await markMessageAsRead(messageId);
+    
+    if (success) {
       // Update local state
       setInboxMessages(prevMessages => 
         prevMessages.map(msg => 
           msg.id === messageId ? { ...msg, read: true } : msg
         )
       );
-      
-      return true;
-    } catch (err) {
-      console.error('Error marking message as read:', err);
-      return false;
     }
+    
+    return success;
   };
   
   // Delete a message
   const deleteMessage = async (messageId: string) => {
-    try {
-      // Use SQL function through Edge Functions
-      const { error } = await supabase.functions.invoke('delete-message', {
-        body: { messageId }
-      });
-        
-      if (error) throw error;
-      
+    const success = await deleteUserMessage(messageId);
+    
+    if (success) {
       // Update local state
       setInboxMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
       setSentMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
-      
-      return true;
-    } catch (err) {
-      console.error('Error deleting message:', err);
-      return false;
     }
+    
+    return success;
   };
   
   return {

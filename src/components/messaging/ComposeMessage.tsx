@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, UserRound, Search } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Message } from './MessageList';
 import { useAuth } from '@/context/AuthContext';
+import RecipientSelector from './RecipientSelector';
 
 interface Recipient {
   id: string;
@@ -94,11 +95,6 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
     }
   };
 
-  // Case-insensitive filtering of recipients
-  const filteredRecipients = recipients.filter(r => 
-    !searchTerm || r.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="p-4 bg-white dark:bg-gray-950 rounded-md shadow-md">
       <div className="flex justify-between items-center mb-4">
@@ -113,60 +109,15 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
       <div className="space-y-4">
         <div>
           <Label htmlFor="recipient">To</Label>
-          <div className="space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search recipients..." 
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            {!replyTo && (
-              <div className="border rounded-md max-h-48 overflow-y-auto">
-                {recipients.length > 0 ? (
-                  <ul className="divide-y">
-                    {filteredRecipients.length > 0 ? (
-                      filteredRecipients.map((recipient) => (
-                        <li 
-                          key={recipient.id}
-                          className={`p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
-                            recipientId === recipient.id ? 'bg-gray-50 dark:bg-gray-800' : ''
-                          }`}
-                          onClick={() => setRecipientId(recipient.id)}
-                        >
-                          <UserRound className="h-4 w-4 text-gray-400" />
-                          <span>{recipient.name || 'Unknown'}</span>
-                          {recipientId === recipient.id && (
-                            <span className="ml-auto text-xs bg-primary text-white px-1.5 py-0.5 rounded">
-                              Selected
-                            </span>
-                          )}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="p-4 text-center text-gray-500">
-                        No matching recipients found
-                      </li>
-                    )}
-                  </ul>
-                ) : (
-                  <div className="p-4 text-center text-gray-500">
-                    No recipients available
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {replyTo && (
-              <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
-                <UserRound className="h-4 w-4 text-gray-400" />
-                <span>{replyTo.sender_name}</span>
-              </div>
-            )}
-          </div>
+          <RecipientSelector 
+            recipients={recipients}
+            selectedRecipientId={recipientId}
+            onSelectRecipient={setRecipientId}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            isReplyMode={!!replyTo}
+            replyToName={replyTo?.sender_name}
+          />
         </div>
 
         <div>

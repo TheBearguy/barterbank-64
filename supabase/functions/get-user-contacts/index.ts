@@ -29,91 +29,136 @@ serve(async (req) => {
     let data;
     let error;
 
-    // Extensive logging to diagnose issues
+    // Logging request parameters
     console.log(`Fetching contacts for userId: ${userId}, userRole: ${userRole}`);
 
-    // Directly query the profiles table based on user role
+    // Get contacts based on user role
     if (userRole === 'borrower') {
-      // Get all lenders
+      // Borrowers can message lenders
       console.log("Fetching all lenders for borrower");
-      const result = await supabaseClient
-        .from('profiles')
-        .select('id, name')
-        .eq('user_metadata->role', 'lender');
-      
-      if (result.error) {
-        console.error("Error with eq query:", result.error);
-        // Fallback to a simpler query
-        const fallbackResult = await supabaseClient
-          .from('profiles')
-          .select('id, name');
-          
-        data = fallbackResult.data?.filter(profile => 
-          profile.role === 'lender' || 
-          (profile.user_metadata && profile.user_metadata.role === 'lender')
-        );
-        error = fallbackResult.error;
-      } else {
-        data = result.data;
-        error = result.error;
-      }
-      
-      console.log(`Found ${data?.length || 0} lenders, Error: ${error ? JSON.stringify(error) : 'None'}`);
+      await fetchLendersForBorrower();
     } else if (userRole === 'lender') {
-      // Get all borrowers
+      // Lenders can message borrowers
       console.log("Fetching all borrowers for lender");
-      const result = await supabaseClient
-        .from('profiles')
-        .select('id, name')
-        .eq('user_metadata->role', 'borrower');
-      
-      if (result.error) {
-        console.error("Error with eq query:", result.error);
-        // Fallback to a simpler query
-        const fallbackResult = await supabaseClient
+      await fetchBorrowersForLender();
+    } else {
+      // Fallback to the original function
+      console.log("Using fallback get_user_contacts RPC function");
+      await useFallbackMethod();
+    }
+    
+    // Helper function to fetch lenders for borrower
+    async function fetchLendersForBorrower() {
+      try {
+        // Try profiles table first
+        const result = await supabaseClient
           .from('profiles')
-          .select('id, name');
+          .select('id, name')
+          .eq('user_metadata->role', 'lender');
+        
+        if (result.error || !result.data || result.data.length === 0) {
+          console.log("No results with eq query, trying alternative approaches");
           
-        data = fallbackResult.data?.filter(profile => 
-          profile.role === 'borrower' || 
-          (profile.user_metadata && profile.user_metadata.role === 'borrower')
-        );
-        error = fallbackResult.error;
-      } else {
-        data = result.data;
-        error = result.error;
+          // Try other queries if the first one fails
+          await tryAlternativeQueries('lender');
+        } else {
+          data = result.data;
+          error = result.error;
+        }
+      } catch (err) {
+        console.error("Error fetching lenders:", err);
+        // Try alternative approaches
+        await tryAlternativeQueries('lender');
       }
+    }
+    
+    // Helper function to fetch borrowers for lender
+    async function fetchBorrowersForLender() {
+      try {
+        // Try profiles table first
+        const result = await supabaseClient
+          .from('profiles')
+          .select('id, name')
+          .eq('user_metadata->role', 'borrower');
+        
+        if (result.error || !result.data || result.data.length === 0) {
+          console.log("No results with eq query, trying alternative approaches");
+          
+          // Try other queries if the first one fails
+          await tryAlternativeQueries('borrower');
+        } else {
+          data = result.data;
+          error = result.error;
+          console.log("Found borrowers:", data);
+        }
+      } catch (err) {
+        console.error("Error fetching borrowers:", err);
+        // Try alternative approaches
+        await tryAlternativeQueries('borrower');
+      }
+    }
+    
+    // Helper function to try alternative query approaches
+    async function tryAlternativeQueries(targetRole) {
+      console.log(`Trying alternative queries for role: ${targetRole}`);
       
-      console.log(`Found ${data?.length || 0} borrowers, Error: ${error ? JSON.stringify(error) : 'None'}`);
-      console.log("Raw result:", JSON.stringify(result));
-      
-      // If we still have no data, try a direct query on the auth.users table
-      if (!data || data.length === 0) {
-        console.log("No borrowers found, trying direct auth.users query");
+      // Try simpler query
+      const fallbackResult = await supabaseClient
+        .from('profiles')
+        .select('id, name, role, user_metadata');
+        
+      if (!fallbackResult.error && fallbackResult.data) {
+        console.log(`Found ${fallbackResult.data.length} profiles, filtering for ${targetRole}`);
+        
+        // Filter based on role
+        data = fallbackResult.data
+          .filter(profile => {
+            // Check both profile.role and profile.user_metadata.role
+            const profileRole = profile.role || 
+                            (profile.user_metadata && profile.user_metadata.role);
+            
+            const isMatch = profileRole === targetRole;
+            return isMatch;
+          })
+          .map(profile => ({
+            id: profile.id,
+            name: profile.name || 'Unknown User'
+          }));
+          
+        console.log(`Filtered ${data.length} ${targetRole}s`);
+      } else {
+        console.error("Alternative query failed:", fallbackResult.error);
+        
+        // Last resort: direct query on auth.users table
+        console.log("Trying direct auth.users query");
         const userResult = await supabaseClient
           .from('users')
-          .select('id, raw_user_meta_data->name')
-          .eq('raw_user_meta_data->role', 'borrower');
+          .select('id, raw_user_meta_data');
           
         if (!userResult.error && userResult.data) {
-          data = userResult.data.map(user => ({
-            id: user.id,
-            name: user.raw_user_meta_data?.name || 'Unknown'
-          }));
-          console.log("Users query result:", JSON.stringify(data));
+          data = userResult.data
+            .filter(user => 
+              user.raw_user_meta_data && 
+              user.raw_user_meta_data.role === targetRole
+            )
+            .map(user => ({
+              id: user.id,
+              name: user.raw_user_meta_data?.name || 'Unknown'
+            }));
+            
+          console.log(`Found ${data.length} ${targetRole}s from users table`);
         }
       }
-    } else {
-      // Fallback: use the original stored function
-      console.log("Using fallback get_user_contacts RPC function");
+    }
+    
+    // Fallback to RPC function if other methods fail
+    async function useFallbackMethod() {
       const result = await supabaseClient.rpc('get_user_contacts', {
         user_id: userId
       });
       
       data = result.data;
       error = result.error;
-      
-      console.log(`Fallback result: ${data ? JSON.stringify(data) : 'None'}, Error: ${error ? JSON.stringify(error) : 'None'}`);
     }
 
     if (error) {
@@ -121,33 +166,10 @@ serve(async (req) => {
       throw error;
     }
 
-    // If still no data, try a last resort direct query
-    if (!data || data.length === 0) {
-      console.log("No contacts found with specialized queries, trying a generic query");
-      const allUsersResult = await supabaseClient
-        .from('profiles')
-        .select('id, name, role, user_metadata');
-        
-      if (!allUsersResult.error) {
-        // Filter based on the role we need
-        const neededRole = userRole === 'lender' ? 'borrower' : 'lender';
-        data = allUsersResult.data
-          ?.filter(profile => {
-            const profileRole = profile.role || 
-                               (profile.user_metadata && profile.user_metadata.role);
-            return profileRole === neededRole;
-          })
-          .map(profile => ({
-            id: profile.id,
-            name: profile.name || 'Unknown'
-          }));
-        console.log("Generic query found contacts:", JSON.stringify(data));
-      }
-    }
-
-    // Return empty array instead of null if no contacts found
+    // If still no data, return empty array
     const finalResult = data || [];
     console.log("Returning contacts:", JSON.stringify(finalResult));
+    
     return new Response(JSON.stringify(finalResult), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
