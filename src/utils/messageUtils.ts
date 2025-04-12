@@ -201,7 +201,7 @@ export const sendMessageToUser = async (
   try {
     // Try Edge Function first
     try {
-      const { error } = await supabase.functions.invoke('send-message', {
+      const { data, error } = await supabase.functions.invoke('send-message', {
         body: { 
           senderId,
           recipientId,
@@ -217,7 +217,7 @@ export const sendMessageToUser = async (
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: Use RPC function
-      const { error } = await supabase.rpc('send_message', {
+      const { data, error } = await supabase.rpc('send_message', {
         p_sender_id: senderId,
         p_recipient_id: recipientId,
         p_subject: subject,
@@ -241,7 +241,7 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
   try {
     // Try Edge Function first
     try {
-      const { error } = await supabase.functions.invoke('mark-message-as-read', {
+      const { data, error } = await supabase.functions.invoke('mark-message-as-read', {
         body: { messageId }
       });
         
@@ -251,7 +251,7 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: Use direct RPC call to the stored procedure
-      const { error } = await supabase.rpc('mark_message_as_read', { message_id: messageId });
+      const { data, error } = await supabase.rpc('mark_message_as_read', { message_id: messageId });
       
       if (error) {
         console.error('RPC error:', error);
@@ -273,7 +273,7 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
   try {
     // Try Edge Function first
     try {
-      const { error } = await supabase.functions.invoke('delete-message', {
+      const { data, error } = await supabase.functions.invoke('delete-message', {
         body: { messageId }
       });
         
@@ -283,7 +283,7 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: Use RPC call to the stored procedure
-      const { error } = await supabase.rpc('delete_message', { message_id: messageId });
+      const { data, error } = await supabase.rpc('delete_message', { message_id: messageId });
       
       if (error) {
         console.error('RPC error:', error);
@@ -297,3 +297,4 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
     return false;
   }
 };
+

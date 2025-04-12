@@ -27,7 +27,7 @@ serve(async (req) => {
     );
 
     // Execute the stored function for sending a message
-    const { error } = await supabaseClient.rpc('send_message', {
+    const { data, error } = await supabaseClient.rpc('send_message', {
       p_sender_id: senderId,
       p_recipient_id: recipientId,
       p_subject: subject,
