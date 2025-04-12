@@ -18,26 +18,15 @@ export const fetchInboxMessages = async (userId: string): Promise<Message[]> => 
       // Format inbox messages
       return inboxData ? formatMessages(inboxData, 'inbox') : [];
     } catch (functionError) {
-      console.error('Edge function error, trying direct query:', functionError);
+      console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: direct RPC call to get_inbox_messages function
       const { data, error } = await supabase.rpc('get_inbox_messages', { user_id: userId });
         
       if (error) {
         console.error('RPC error:', error);
-        // Last resort: manual SQL query using profiles table
-        const { data: manualData, error: manualError } = await supabase
-          .from('profiles')
-          .select(`
-            id,
-            name
-          `)
-          .eq('id', userId);
-          
-        if (manualError) throw manualError;
-        
-        // If we get here, we were able to validate the user exists but couldn't fetch messages
-        console.warn("Message fetching fallback: returning empty array");
+        // Last resort: log error and return empty array
+        console.warn("Message fetching failed: returning empty array");
         return [];
       }
       
@@ -65,26 +54,15 @@ export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
       // Format sent messages
       return sentData ? formatMessages(sentData, 'sent') : [];
     } catch (functionError) {
-      console.error('Edge function error, trying direct query:', functionError);
+      console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: direct RPC call to get_sent_messages function
       const { data, error } = await supabase.rpc('get_sent_messages', { user_id: userId });
         
       if (error) {
         console.error('RPC error:', error);
-        // Last resort: manual SQL query using profiles table
-        const { data: manualData, error: manualError } = await supabase
-          .from('profiles')
-          .select(`
-            id,
-            name
-          `)
-          .eq('id', userId);
-          
-        if (manualError) throw manualError;
-        
-        // If we get here, we were able to validate the user exists but couldn't fetch messages
-        console.warn("Message fetching fallback: returning empty array");
+        // Last resort: log error and return empty array
+        console.warn("Message fetching failed: returning empty array");
         return [];
       }
       
@@ -272,15 +250,11 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
     } catch (functionError) {
       console.error('Edge function error, trying direct RPC call:', functionError);
       
-      // Fallback: Use direct SQL query with the execute procedure
+      // Fallback: Use direct RPC call to the stored procedure
       const { error } = await supabase.rpc('mark_message_as_read', { message_id: messageId });
       
-      // If RPC fails, we don't have a stored procedure, so try a custom SQL query
       if (error) {
-        console.error('RPC error, trying custom query:', error);
-        
-        // This is a workaround as we can't directly update the messages table
-        // In a real app, you would add a stored procedure for this
+        console.error('RPC error:', error);
         return false;
       }
       
@@ -308,10 +282,9 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
     } catch (functionError) {
       console.error('Edge function error, trying direct RPC call:', functionError);
       
-      // Fallback: Use direct SQL query with the execute procedure
+      // Fallback: Use RPC call to the stored procedure
       const { error } = await supabase.rpc('delete_message', { message_id: messageId });
       
-      // If RPC fails, we don't have a stored procedure so return false
       if (error) {
         console.error('RPC error:', error);
         return false;

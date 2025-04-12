@@ -1,5 +1,5 @@
 
--- Ensure messages table exists
+-- Add messages to public schema and enable RLS
 CREATE TABLE IF NOT EXISTS public.messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sender_id UUID NOT NULL REFERENCES public.profiles(id),
@@ -11,39 +11,36 @@ CREATE TABLE IF NOT EXISTS public.messages (
   reply_to UUID REFERENCES public.messages(id)
 );
 
--- Add indexes if they don't exist
+-- Add indexes for better query performance
 CREATE INDEX IF NOT EXISTS messages_sender_id_idx ON public.messages(sender_id);
 CREATE INDEX IF NOT EXISTS messages_recipient_id_idx ON public.messages(recipient_id);
 CREATE INDEX IF NOT EXISTS messages_created_at_idx ON public.messages(created_at);
 
--- Add or update RLS policies
+-- Enable row level security
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- Allow users to view messages they've sent or received
+-- Create policies for message access
 DROP POLICY IF EXISTS "Users can view their own messages" ON public.messages;
 CREATE POLICY "Users can view their own messages" ON public.messages
   FOR SELECT 
   USING (auth.uid() = sender_id OR auth.uid() = recipient_id);
 
--- Allow users to insert their own messages
 DROP POLICY IF EXISTS "Users can insert messages" ON public.messages;
 CREATE POLICY "Users can insert messages" ON public.messages
   FOR INSERT 
   WITH CHECK (auth.uid() = sender_id);
 
--- Allow users to update messages they've received (to mark as read)
 DROP POLICY IF EXISTS "Users can update messages they've received" ON public.messages;
 CREATE POLICY "Users can update messages they've received" ON public.messages
   FOR UPDATE 
   USING (auth.uid() = recipient_id);
 
--- Allow users to delete messages they've sent or received
 DROP POLICY IF EXISTS "Users can delete their own messages" ON public.messages;
 CREATE POLICY "Users can delete their own messages" ON public.messages
   FOR DELETE 
   USING (auth.uid() = sender_id OR auth.uid() = recipient_id);
 
--- Create stored procedures for edge functions to use
+-- Create functions for message operations
 CREATE OR REPLACE FUNCTION get_inbox_messages(user_id UUID)
 RETURNS TABLE (
   id UUID,
@@ -143,3 +140,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION mark_message_as_read(message_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE messages
+  SET read = true
+  WHERE id = message_id AND recipient_id = auth.uid();
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_message(message_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  DELETE FROM messages
+  WHERE id = message_id AND (sender_id = auth.uid() OR recipient_id = auth.uid());
+END;
+$$ LANGUAGE plpgsql;
