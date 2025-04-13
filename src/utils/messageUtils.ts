@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Message } from '@/components/messaging/MessageList';
 
@@ -18,21 +17,23 @@ export const fetchInboxMessages = async (userId: string): Promise<Message[]> => 
       // Format inbox messages
       return inboxData ? formatMessages(inboxData, 'inbox') : [];
     } catch (functionError) {
-      console.error('Edge function error, trying direct RPC call:', functionError);
+      console.error('Edge function error, trying direct query:', functionError);
       
-      // Fallback: direct RPC call to get_inbox_messages function
-      const { data, error } = await supabase.rpc('get_inbox_messages', {
-        user_id: userId
-      } as Record<string, unknown>);
+      // Fallback: direct query to messages table
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*, sender:profiles!sender_id(name)')
+        .eq('recipient_id', userId)
+        .order('created_at', { ascending: false });
         
       if (error) {
-        console.error('RPC error:', error);
+        console.error('Query error:', error);
         // Last resort: log error and return empty array
         console.warn("Message fetching failed: returning empty array");
         return [];
       }
       
-      return data ? formatMessagesFromRPC(data, 'inbox') : [];
+      return data ? formatMessagesFromQuery(data, 'inbox') : [];
     }
   } catch (error) {
     console.error('Error fetching inbox messages:', error);
@@ -56,21 +57,23 @@ export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
       // Format sent messages
       return sentData ? formatMessages(sentData, 'sent') : [];
     } catch (functionError) {
-      console.error('Edge function error, trying direct RPC call:', functionError);
+      console.error('Edge function error, trying direct query:', functionError);
       
-      // Fallback: direct RPC call to get_sent_messages function
-      const { data, error } = await supabase.rpc('get_sent_messages', {
-        user_id: userId
-      } as Record<string, unknown>);
+      // Fallback: direct query to messages table
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*, recipient:profiles!recipient_id(name)')
+        .eq('sender_id', userId)
+        .order('created_at', { ascending: false });
         
       if (error) {
-        console.error('RPC error:', error);
+        console.error('Query error:', error);
         // Last resort: log error and return empty array
         console.warn("Message fetching failed: returning empty array");
         return [];
       }
       
-      return data ? formatMessagesFromRPC(data, 'sent') : [];
+      return data ? formatMessagesFromQuery(data, 'sent') : [];
     }
   } catch (error) {
     console.error('Error fetching sent messages:', error);
@@ -99,6 +102,36 @@ const formatMessages = (messages: any[], type: 'inbox' | 'sent'): Message[] => {
       sender_name: 'You',
       recipient_id: msg.recipient_id,
       recipient_name: msg.recipient_name || 'Unknown',
+      subject: msg.subject,
+      content: msg.content,
+      created_at: msg.created_at,
+      read: msg.read,
+      reply_to: msg.reply_to
+    }));
+  }
+};
+
+// Helper function to format messages from direct query
+const formatMessagesFromQuery = (messages: any[], type: 'inbox' | 'sent'): Message[] => {
+  if (type === 'inbox') {
+    return messages.map((msg: any) => ({
+      id: msg.id,
+      sender_id: msg.sender_id,
+      sender_name: msg.sender?.name || 'Unknown',
+      recipient_id: msg.recipient_id,
+      subject: msg.subject,
+      content: msg.content,
+      created_at: msg.created_at,
+      read: msg.read,
+      reply_to: msg.reply_to
+    }));
+  } else {
+    return messages.map((msg: any) => ({
+      id: msg.id,
+      sender_id: msg.sender_id,
+      sender_name: 'You',
+      recipient_id: msg.recipient_id,
+      recipient_name: msg.recipient?.name || 'Unknown',
       subject: msg.subject,
       content: msg.content,
       created_at: msg.created_at,
@@ -205,7 +238,7 @@ export const sendMessageToUser = async (
   try {
     // Try Edge Function first
     try {
-      const response = await supabase.functions.invoke('send-message', {
+      const { data, error } = await supabase.functions.invoke('send-message', {
         body: { 
           senderId,
           recipientId,
@@ -215,27 +248,34 @@ export const sendMessageToUser = async (
         }
       });
       
-      if (response.error) {
-        console.error('Edge function error:', response.error);
-        throw response.error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+      
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to send message");
       }
       
       return true;
     } catch (functionError) {
-      console.error('Edge function error, trying direct RPC call:', functionError);
+      console.error('Edge function error, trying direct insertion:', functionError);
       
-      // Fallback: Use RPC function
-      const response = await supabase.rpc('send_message', {
-        p_sender_id: senderId,
-        p_recipient_id: recipientId,
-        p_subject: subject,
-        p_content: content,
-        p_reply_to: replyToId || null
-      } as Record<string, unknown>);
+      // Fallback: Insert directly into messages table
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: senderId,
+          recipient_id: recipientId,
+          subject: subject,
+          content: content,
+          reply_to: replyToId || null,
+          read: false
+        });
       
-      if (response.error) {
-        console.error('RPC error:', response.error);
-        throw response.error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
       }
       
       return true;
@@ -264,15 +304,16 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
       
       return true;
     } catch (functionError) {
-      console.error('Edge function error, trying direct RPC call:', functionError);
+      console.error('Edge function error, trying direct update:', functionError);
       
-      // Fallback: Use direct RPC call to the stored procedure
-      const response = await supabase.rpc('mark_message_as_read', { 
-        message_id: messageId 
-      } as Record<string, unknown>);
+      // Fallback: Update message directly
+      const { error } = await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('id', messageId);
       
-      if (response.error) {
-        console.error('RPC error:', response.error);
+      if (error) {
+        console.error('Update error:', error);
         return false;
       }
       
@@ -302,15 +343,16 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
       
       return true;
     } catch (functionError) {
-      console.error('Edge function error, trying direct RPC call:', functionError);
+      console.error('Edge function error, trying direct deletion:', functionError);
       
-      // Fallback: Use RPC call to the stored procedure
-      const response = await supabase.rpc('delete_message', { 
-        message_id: messageId 
-      } as Record<string, unknown>);
+      // Fallback: Delete message directly
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId);
       
-      if (response.error) {
-        console.error('RPC error:', response.error);
+      if (error) {
+        console.error('Delete error:', error);
         return false;
       }
       

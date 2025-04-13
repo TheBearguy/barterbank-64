@@ -32,17 +32,22 @@ serve(async (req) => {
       }
     );
 
-    // Execute the stored function for sending a message
-    const { data, error } = await supabaseClient.rpc('send_message', {
-      p_sender_id: senderId,
-      p_recipient_id: recipientId,
-      p_subject: subject,
-      p_content: content,
-      p_reply_to: replyToId
-    });
+    // Insert directly into the messages table instead of using RPC
+    const { data, error } = await supabaseClient
+      .from('messages')
+      .insert({
+        sender_id: senderId,
+        recipient_id: recipientId,
+        subject: subject,
+        content: content,
+        reply_to: replyToId || null,
+        read: false
+      })
+      .select()
+      .single();
 
     if (error) {
-      console.error("Error calling send_message RPC:", error);
+      console.error("Error inserting message:", error);
       throw error;
     }
 

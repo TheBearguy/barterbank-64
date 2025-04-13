@@ -65,19 +65,21 @@ export function useMessages() {
     if (!user) return false;
     
     try {
+      console.log("Attempting to send message to:", recipientId);
       const success = await sendMessageToUser(user.id, recipientId, subject, content, replyToId);
       
       if (success) {
+        console.log("Message sent successfully");
         refreshMessages();
         toast({
           title: "Success",
           description: "Message sent successfully",
         });
+        return true;
       } else {
+        console.error("sendMessageToUser returned false");
         throw new Error("Failed to send message");
       }
-      
-      return success;
     } catch (error) {
       console.error("Error in sendMessage:", error);
       toast({
