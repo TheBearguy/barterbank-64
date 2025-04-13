@@ -8,12 +8,18 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const { senderId, recipientId, subject, content, replyToId } = await req.json();
+    
+    // Validate required parameters
+    if (!senderId || !recipientId || !subject || !content) {
+      throw new Error("Missing required parameters");
+    }
     
     // Create a Supabase client with the Auth context of the function
     const supabaseClient = createClient(
@@ -35,14 +41,22 @@ serve(async (req) => {
       p_reply_to: replyToId
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error calling send_message RPC:", error);
+      throw error;
+    }
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("Error in send-message function:", error);
+    
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+      success: false 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
     });

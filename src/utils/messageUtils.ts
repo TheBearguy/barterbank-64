@@ -21,9 +21,9 @@ export const fetchInboxMessages = async (userId: string): Promise<Message[]> => 
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: direct RPC call to get_inbox_messages function
-      const { data, error } = await supabase.rpc('get_inbox_messages', { 
-        user_id: userId 
-      });
+      const { data, error } = await supabase.rpc('get_inbox_messages', {
+        user_id: userId
+      } as Record<string, unknown>);
         
       if (error) {
         console.error('RPC error:', error);
@@ -59,9 +59,9 @@ export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
       console.error('Edge function error, trying direct RPC call:', functionError);
       
       // Fallback: direct RPC call to get_sent_messages function
-      const { data, error } = await supabase.rpc('get_sent_messages', { 
-        user_id: userId 
-      });
+      const { data, error } = await supabase.rpc('get_sent_messages', {
+        user_id: userId
+      } as Record<string, unknown>);
         
       if (error) {
         console.error('RPC error:', error);
@@ -231,7 +231,7 @@ export const sendMessageToUser = async (
         p_subject: subject,
         p_content: content,
         p_reply_to: replyToId || null
-      });
+      } as Record<string, unknown>);
       
       if (response.error) {
         console.error('RPC error:', response.error);
@@ -269,7 +269,7 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
       // Fallback: Use direct RPC call to the stored procedure
       const response = await supabase.rpc('mark_message_as_read', { 
         message_id: messageId 
-      });
+      } as Record<string, unknown>);
       
       if (response.error) {
         console.error('RPC error:', response.error);
@@ -307,7 +307,7 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
       // Fallback: Use RPC call to the stored procedure
       const response = await supabase.rpc('delete_message', { 
         message_id: messageId 
-      });
+      } as Record<string, unknown>);
       
       if (response.error) {
         console.error('RPC error:', response.error);
