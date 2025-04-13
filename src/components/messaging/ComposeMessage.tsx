@@ -42,6 +42,11 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
     }
   }, [replyTo, recipients]);
 
+  const handleSelectRecipient = (id: string) => {
+    console.log("Selected recipient ID:", id);
+    setRecipientId(id);
+  };
+
   const handleSend = async () => {
     if (!recipientId) {
       toast({
@@ -93,11 +98,6 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
     } finally {
       setIsSending(false);
     }
-  };
-
-  const handleSelectRecipient = (id: string) => {
-    console.log("Selected recipient ID:", id);
-    setRecipientId(id);
   };
 
   return (

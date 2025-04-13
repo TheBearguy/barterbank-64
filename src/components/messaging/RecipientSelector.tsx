@@ -32,6 +32,11 @@ const RecipientSelector = ({
     !searchTerm || r.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleRecipientClick = (id: string) => {
+    console.log("Recipient clicked:", id);
+    onSelectRecipient(id);
+  };
+
   return (
     <div className="space-y-2">
       {!isReplyMode ? (
@@ -56,7 +61,7 @@ const RecipientSelector = ({
                       className={`p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${
                         selectedRecipientId === recipient.id ? 'bg-gray-50 dark:bg-gray-800' : ''
                       }`}
-                      onClick={() => onSelectRecipient(recipient.id)}
+                      onClick={() => handleRecipientClick(recipient.id)}
                     >
                       <UserRound className="h-4 w-4 text-gray-400" />
                       <span>{recipient.name || 'Unknown'}</span>
