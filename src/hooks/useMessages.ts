@@ -65,7 +65,7 @@ export function useMessages() {
     if (!user) return false;
     
     try {
-      console.log("Attempting to send message to:", recipientId);
+      console.log("Attempting to send message to:", recipientId, "from:", user.id);
       
       if (!subject || !content || !recipientId) {
         console.error("Missing required parameters");
@@ -77,10 +77,6 @@ export function useMessages() {
       if (success) {
         console.log("Message sent successfully");
         refreshMessages();
-        toast({
-          title: "Success",
-          description: "Message sent successfully",
-        });
         return true;
       } else {
         console.error("sendMessageToUser returned false");
@@ -88,12 +84,7 @@ export function useMessages() {
       }
     } catch (error) {
       console.error("Error in sendMessage:", error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
-      return false;
+      throw error; // Let the calling component handle the error
     }
   };
   

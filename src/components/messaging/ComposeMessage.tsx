@@ -31,9 +31,6 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
   const [isSending, setIsSending] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Get user role
-  const userRole = user?.user_metadata?.role || '';
-
   useEffect(() => {
     // Log available recipients for debugging
     console.log("Available recipients:", recipients);
@@ -75,6 +72,7 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
 
     setIsSending(true);
     try {
+      console.log("Sending message to recipient:", recipientId);
       const success = await onSend(subject, content, recipientId, replyTo?.id);
       if (success) {
         toast({
@@ -82,6 +80,8 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
           description: "Message sent successfully",
         });
         onCancel();
+      } else {
+        throw new Error("Failed to send message");
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -93,6 +93,11 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleSelectRecipient = (id: string) => {
+    console.log("Selected recipient ID:", id);
+    setRecipientId(id);
   };
 
   return (
@@ -112,7 +117,7 @@ const ComposeMessage = ({ recipients, onSend, onCancel, replyTo }: ComposeMessag
           <RecipientSelector 
             recipients={recipients}
             selectedRecipientId={recipientId}
-            onSelectRecipient={setRecipientId}
+            onSelectRecipient={handleSelectRecipient}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             isReplyMode={!!replyTo}

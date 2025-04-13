@@ -18,6 +18,7 @@ serve(async (req) => {
     
     // Validate required parameters
     if (!senderId || !recipientId || !subject || !content) {
+      console.error("Missing required parameters:", { senderId, recipientId, subject });
       throw new Error("Missing required parameters");
     }
     
@@ -32,6 +33,8 @@ serve(async (req) => {
       }
     );
 
+    console.log("Attempting to send message from", senderId, "to", recipientId);
+
     // Insert directly into the messages table using RPC
     const { data, error } = await supabaseClient.rpc('send_message', {
       p_sender_id: senderId,
@@ -45,6 +48,8 @@ serve(async (req) => {
       console.error("Error sending message:", error);
       throw error;
     }
+
+    console.log("Message sent successfully:", data);
 
     return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
