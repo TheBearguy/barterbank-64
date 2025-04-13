@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Message } from '@/components/messaging/MessageList';
 
@@ -6,35 +7,18 @@ import { Message } from '@/components/messaging/MessageList';
  */
 export const fetchInboxMessages = async (userId: string): Promise<Message[]> => {
   try {
-    // First try using Edge Function
-    try {
-      const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
-        body: { userId }
-      });
-        
-      if (inboxError) throw inboxError;
+    // Use Edge Function to get inbox messages
+    const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
+      body: { userId }
+    });
       
-      // Format inbox messages
-      return inboxData ? formatMessages(inboxData, 'inbox') : [];
-    } catch (functionError) {
-      console.error('Edge function error, trying direct query:', functionError);
-      
-      // Fallback: direct query to messages table
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*, sender:profiles!sender_id(name)')
-        .eq('recipient_id', userId)
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        console.error('Query error:', error);
-        // Last resort: log error and return empty array
-        console.warn("Message fetching failed: returning empty array");
-        return [];
-      }
-      
-      return data ? formatMessagesFromQuery(data, 'inbox') : [];
+    if (inboxError) {
+      console.error('Error fetching inbox messages:', inboxError);
+      return [];
     }
+    
+    // Format inbox messages
+    return inboxData ? formatMessages(inboxData, 'inbox') : [];
   } catch (error) {
     console.error('Error fetching inbox messages:', error);
     return [];
@@ -46,35 +30,18 @@ export const fetchInboxMessages = async (userId: string): Promise<Message[]> => 
  */
 export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
   try {
-    // First try using Edge Function
-    try {
-      const { data: sentData, error: sentError } = await supabase.functions.invoke('get-sent-messages', {
-        body: { userId }
-      });
-        
-      if (sentError) throw sentError;
+    // Use Edge Function to get sent messages
+    const { data: sentData, error: sentError } = await supabase.functions.invoke('get-sent-messages', {
+      body: { userId }
+    });
       
-      // Format sent messages
-      return sentData ? formatMessages(sentData, 'sent') : [];
-    } catch (functionError) {
-      console.error('Edge function error, trying direct query:', functionError);
-      
-      // Fallback: direct query to messages table
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*, recipient:profiles!recipient_id(name)')
-        .eq('sender_id', userId)
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        console.error('Query error:', error);
-        // Last resort: log error and return empty array
-        console.warn("Message fetching failed: returning empty array");
-        return [];
-      }
-      
-      return data ? formatMessagesFromQuery(data, 'sent') : [];
+    if (sentError) {
+      console.error('Error fetching sent messages:', sentError);
+      return [];
     }
+    
+    // Format sent messages
+    return sentData ? formatMessages(sentData, 'sent') : [];
   } catch (error) {
     console.error('Error fetching sent messages:', error);
     return [];
@@ -83,66 +50,11 @@ export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
 
 // Helper function to format messages from edge functions
 const formatMessages = (messages: any[], type: 'inbox' | 'sent'): Message[] => {
-  if (type === 'inbox') {
-    return messages.map((msg: any) => ({
-      id: msg.id,
-      sender_id: msg.sender_id,
-      sender_name: msg.sender_name || 'Unknown',
-      recipient_id: msg.recipient_id,
-      subject: msg.subject,
-      content: msg.content,
-      created_at: msg.created_at,
-      read: msg.read,
-      reply_to: msg.reply_to
-    }));
-  } else {
-    return messages.map((msg: any) => ({
-      id: msg.id,
-      sender_id: msg.sender_id,
-      sender_name: 'You',
-      recipient_id: msg.recipient_id,
-      recipient_name: msg.recipient_name || 'Unknown',
-      subject: msg.subject,
-      content: msg.content,
-      created_at: msg.created_at,
-      read: msg.read,
-      reply_to: msg.reply_to
-    }));
+  if (!messages || !Array.isArray(messages)) {
+    console.warn('Invalid messages format:', messages);
+    return [];
   }
-};
 
-// Helper function to format messages from direct query
-const formatMessagesFromQuery = (messages: any[], type: 'inbox' | 'sent'): Message[] => {
-  if (type === 'inbox') {
-    return messages.map((msg: any) => ({
-      id: msg.id,
-      sender_id: msg.sender_id,
-      sender_name: msg.sender?.name || 'Unknown',
-      recipient_id: msg.recipient_id,
-      subject: msg.subject,
-      content: msg.content,
-      created_at: msg.created_at,
-      read: msg.read,
-      reply_to: msg.reply_to
-    }));
-  } else {
-    return messages.map((msg: any) => ({
-      id: msg.id,
-      sender_id: msg.sender_id,
-      sender_name: 'You',
-      recipient_id: msg.recipient_id,
-      recipient_name: msg.recipient?.name || 'Unknown',
-      subject: msg.subject,
-      content: msg.content,
-      created_at: msg.created_at,
-      read: msg.read,
-      reply_to: msg.reply_to
-    }));
-  }
-};
-
-// Helper function to format messages from RPC functions
-const formatMessagesFromRPC = (messages: any[], type: 'inbox' | 'sent'): Message[] => {
   if (type === 'inbox') {
     return messages.map((msg: any) => ({
       id: msg.id,
@@ -178,34 +90,20 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
   try {
     console.log("Fetching contacts with role:", userRole);
     
-    // Try Edge Function first
-    try {
-      const { data, error } = await supabase.functions.invoke('get-user-contacts', {
-        body: { 
-          userId,
-          userRole
-        }
-      });
-      
-      if (error) throw error;
-      
-      return formatContacts(data);
-    } catch (functionError) {
-      console.error('Edge function error, trying direct query:', functionError);
-      
-      // Fallback: fetch directly from profiles table based on opposite role
-      const oppositeRole = userRole === 'lender' ? 'borrower' : 'lender';
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .eq('role', oppositeRole);
-        
-      if (error) throw error;
-      
-      console.log("Fallback contacts query result:", data);
-      return formatContacts(data);
+    // Use Edge Function to get user contacts
+    const { data, error } = await supabase.functions.invoke('get-user-contacts', {
+      body: { 
+        userId,
+        userRole
+      }
+    });
+    
+    if (error) {
+      console.error('Error fetching contacts:', error);
+      return [];
     }
+    
+    return formatContacts(data);
   } catch (err) {
     console.error('Error fetching contacts:', err);
     return [];
@@ -236,50 +134,37 @@ export const sendMessageToUser = async (
   replyToId?: string
 ): Promise<boolean> => {
   try {
-    // Try Edge Function first
-    try {
-      const { data, error } = await supabase.functions.invoke('send-message', {
-        body: { 
-          senderId,
-          recipientId,
-          subject,
-          content,
-          replyToId: replyToId || null
-        }
-      });
-      
-      if (error) {
-        console.error('Edge function error:', error);
-        throw error;
-      }
-      
-      if (!data?.success) {
-        throw new Error(data?.error || "Failed to send message");
-      }
-      
-      return true;
-    } catch (functionError) {
-      console.error('Edge function error, trying direct insertion:', functionError);
-      
-      // Fallback: Insert directly into messages table
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          sender_id: senderId,
-          recipient_id: recipientId,
-          subject: subject,
-          content: content,
-          reply_to: replyToId || null,
-          read: false
-        });
-      
-      if (error) {
-        console.error('Insert error:', error);
-        throw error;
-      }
-      
-      return true;
+    console.log("Sending message to:", recipientId, "from:", senderId);
+    
+    // Validate parameters
+    if (!senderId || !recipientId || !subject || !content) {
+      console.error("Missing required parameters");
+      return false;
     }
+    
+    // Use Edge Function to send message
+    const { data, error } = await supabase.functions.invoke('send-message', {
+      body: { 
+        senderId,
+        recipientId,
+        subject,
+        content,
+        replyToId: replyToId || null
+      }
+    });
+    
+    if (error) {
+      console.error('Error sending message:', error);
+      return false;
+    }
+    
+    if (!data?.success) {
+      console.error('Failed to send message:', data?.error || 'Unknown error');
+      return false;
+    }
+    
+    console.log('Message sent successfully');
+    return true;
   } catch (err) {
     console.error('Error sending message:', err);
     return false;
@@ -291,34 +176,17 @@ export const sendMessageToUser = async (
  */
 export const markMessageAsRead = async (messageId: string): Promise<boolean> => {
   try {
-    // Try Edge Function first
-    try {
-      const response = await supabase.functions.invoke('mark-message-as-read', {
-        body: { messageId }
-      });
-      
-      if (response.error) {
-        console.error('Edge function error:', response.error);
-        throw response.error;
-      }
-      
-      return true;
-    } catch (functionError) {
-      console.error('Edge function error, trying direct update:', functionError);
-      
-      // Fallback: Update message directly
-      const { error } = await supabase
-        .from('messages')
-        .update({ read: true })
-        .eq('id', messageId);
-      
-      if (error) {
-        console.error('Update error:', error);
-        return false;
-      }
-      
-      return true;
+    // Use Edge Function to mark message as read
+    const response = await supabase.functions.invoke('mark-message-as-read', {
+      body: { messageId }
+    });
+    
+    if (response.error) {
+      console.error('Error marking message as read:', response.error);
+      return false;
     }
+    
+    return true;
   } catch (err) {
     console.error('Error marking message as read:', err);
     return false;
@@ -330,34 +198,17 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
  */
 export const deleteUserMessage = async (messageId: string): Promise<boolean> => {
   try {
-    // Try Edge Function first
-    try {
-      const response = await supabase.functions.invoke('delete-message', {
-        body: { messageId }
-      });
-      
-      if (response.error) {
-        console.error('Edge function error:', response.error);
-        throw response.error;
-      }
-      
-      return true;
-    } catch (functionError) {
-      console.error('Edge function error, trying direct deletion:', functionError);
-      
-      // Fallback: Delete message directly
-      const { error } = await supabase
-        .from('messages')
-        .delete()
-        .eq('id', messageId);
-      
-      if (error) {
-        console.error('Delete error:', error);
-        return false;
-      }
-      
-      return true;
+    // Use Edge Function to delete message
+    const response = await supabase.functions.invoke('delete-message', {
+      body: { messageId }
+    });
+    
+    if (response.error) {
+      console.error('Error deleting message:', response.error);
+      return false;
     }
+    
+    return true;
   } catch (err) {
     console.error('Error deleting message:', err);
     return false;

@@ -66,6 +66,12 @@ export function useMessages() {
     
     try {
       console.log("Attempting to send message to:", recipientId);
+      
+      if (!subject || !content || !recipientId) {
+        console.error("Missing required parameters");
+        throw new Error("Missing required message parameters");
+      }
+      
       const success = await sendMessageToUser(user.id, recipientId, subject, content, replyToId);
       
       if (success) {
