@@ -8,27 +8,18 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const { messageId } = await req.json();
-    console.log("Marking message as read:", messageId);
-    
+
     if (!messageId) {
-      throw new Error("messageId is required");
+      throw new Error("Message ID is required");
     }
-    
-    // Check if this is a mock message ID
-    if (messageId.startsWith('mock-')) {
-      console.log("Mock message ID detected, returning success without database update");
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-    
+
     // Create a Supabase client with the Auth context of the function
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -40,42 +31,31 @@ serve(async (req) => {
       }
     );
 
-    try {
-      // Try to use the stored procedure first
-      console.log("Attempting to use mark_message_as_read stored procedure");
-      const { error } = await supabaseClient.rpc('mark_message_as_read', {
-        message_id: messageId
-      });
+    console.log("Marking message as read:", messageId);
 
-      if (error) {
-        console.error("Error calling stored procedure:", error);
-        throw error;
-      }
+    // Use RPC function to mark message as read
+    const { data, error } = await supabaseClient.rpc('mark_message_as_read', {
+      message_id: messageId
+    });
 
-      console.log("Message marked as read successfully using stored procedure");
-      
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    } catch (rpcError) {
-      console.error("RPC error:", rpcError);
-      
-      // For testing purposes, we'll return success anyway
-      console.log("Returning success for testing purposes despite RPC error");
-      
-      return new Response(JSON.stringify({ success: true, mock: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+    if (error) {
+      console.error("Error marking message as read:", error);
+      throw error;
     }
-  } catch (error) {
-    console.error("Function error:", error.message);
-    
-    // For demo/testing purposes, we'll return success anyway
-    return new Response(JSON.stringify({ success: true, mock: true }), {
+
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
+    });
+  } catch (error) {
+    console.error("Error in mark-message-as-read function:", error);
+    
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+      success: false 
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
     });
   }
 });
