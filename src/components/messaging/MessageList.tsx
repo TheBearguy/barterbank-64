@@ -8,6 +8,7 @@ export interface Message {
   sender_id: string;
   sender_name: string;
   recipient_id: string;
+  recipient_name?: string; // Add optional recipient_name property
   subject: string;
   content: string;
   created_at: string;
