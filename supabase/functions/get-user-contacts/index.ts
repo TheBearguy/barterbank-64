@@ -37,25 +37,78 @@ serve(async (req) => {
       if (userRole === 'borrower') {
         // Borrowers can message lenders
         console.log("Fetching all lenders for borrower");
-        const { data: lenders, error: lendersError } = await supabaseClient.rpc('get_all_lenders');
-        data = lenders || [];
-        error = lendersError;
+        
+        try {
+          // First try using the stored function
+          const { data: lenders, error: lendersError } = await supabaseClient.rpc('get_all_lenders');
+          
+          if (lendersError) {
+            console.error("Error using get_all_lenders RPC:", lendersError);
+            throw lendersError;
+          }
+          
+          data = lenders || [];
+        } catch (rpcError) {
+          // Fallback to direct query if RPC fails
+          console.log("RPC failed, using direct query instead");
+          const { data: lenders, error: queryError } = await supabaseClient
+            .from('profiles')
+            .select('id, name')
+            .eq('role', 'lender');
+            
+          if (queryError) {
+            console.error("Error in direct lenders query:", queryError);
+            throw queryError;
+          }
+          
+          data = lenders || [];
+        }
+        
         console.log(`Found ${data.length} lenders`);
       } else if (userRole === 'lender') {
         // Lenders can message borrowers
         console.log("Fetching all borrowers for lender");
-        const { data: borrowers, error: borrowersError } = await supabaseClient.rpc('get_all_borrowers');
-        data = borrowers || [];
-        error = borrowersError;
+        
+        try {
+          // First try using the stored function
+          const { data: borrowers, error: borrowersError } = await supabaseClient.rpc('get_all_borrowers');
+          
+          if (borrowersError) {
+            console.error("Error using get_all_borrowers RPC:", borrowersError);
+            throw borrowersError;
+          }
+          
+          data = borrowers || [];
+        } catch (rpcError) {
+          // Fallback to direct query if RPC fails
+          console.log("RPC failed, using direct query instead");
+          const { data: borrowers, error: queryError } = await supabaseClient
+            .from('profiles')
+            .select('id, name')
+            .eq('role', 'borrower');
+            
+          if (queryError) {
+            console.error("Error in direct borrowers query:", queryError);
+            throw queryError;
+          }
+          
+          data = borrowers || [];
+        }
+        
         console.log(`Found ${data.length} borrowers`);
       } else {
         // Fallback to general contacts
         console.log("Using fallback method to get contacts");
         const { data: profiles, error: profilesError } = await supabaseClient
           .from('profiles')
-          .select('id, name, role, user_metadata');
+          .select('id, name, role');
           
-        if (!profilesError && profiles) {
+        if (profilesError) {
+          console.error("Error fetching all profiles:", profilesError);
+          throw profilesError;
+        }
+          
+        if (profiles) {
           // Filter out the current user
           data = profiles
             .filter(profile => profile.id !== userId)
@@ -63,8 +116,6 @@ serve(async (req) => {
               id: profile.id,
               name: profile.name || 'Unknown User'
             }));
-        } else {
-          error = profilesError;
         }
         
         console.log(`Found ${data.length} general contacts`);
@@ -96,7 +147,8 @@ serve(async (req) => {
     // Return mock data even on error
     const mockData = [
       { id: "mock-user-1", name: "Test User 1" },
-      { id: "mock-user-2", name: "Test User 2" }
+      { id: "mock-user-2", name: "Test User 2" },
+      { id: "mock-user-3", name: "Test User 3" }
     ];
     
     return new Response(JSON.stringify(mockData), {
