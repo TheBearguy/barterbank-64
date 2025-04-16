@@ -197,7 +197,7 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
     } catch (apiError) {
       console.error('API error in fetchUserContacts:', apiError);
       
-      // Try direct database query as fallback
+      // Try direct database query as fallback for profiles only (which is defined in types)
       try {
         console.log('Attempting direct database query for contacts');
         
@@ -301,30 +301,28 @@ export const sendMessageToUser = async (
     } catch (apiError) {
       console.error('API error in sendMessageToUser:', apiError);
       
-      // Try direct database insertion as fallback
+      // Use RPC for direct database insertion instead of table reference
       try {
-        console.log('Attempting direct database insertion for message');
+        console.log('Attempting to use RPC for message insertion');
         
-        const { error: insertError } = await supabase.from('messages').insert([{
-          sender_id: senderId,
-          recipient_id: recipientId,
-          subject,
-          content,
-          created_at: new Date().toISOString(),
-          read: false,
-          reply_to: replyToId
-        }]);
+        const { error: rpcError } = await supabase.rpc('send_message', {
+          p_sender_id: senderId,
+          p_recipient_id: recipientId,
+          p_subject: subject,
+          p_content: content,
+          p_reply_to: replyToId || null
+        });
         
-        if (insertError) {
-          console.error('Error inserting message directly:', insertError);
-          throw insertError;
+        if (rpcError) {
+          console.error('Error in RPC call:', rpcError);
+          throw rpcError;
         }
         
-        console.log('Message inserted successfully via direct database call');
+        console.log('Message sent successfully via RPC');
         return true;
         
-      } catch (dbError) {
-        console.error('Database error in sendMessageToUser:', dbError);
+      } catch (rpcError) {
+        console.error('RPC error in sendMessageToUser:', rpcError);
         
         // For demo purposes, pretend the message was sent
         console.log('Using mock success for demo purposes');
@@ -361,24 +359,23 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
     } catch (apiError) {
       console.error('API error in markMessageAsRead:', apiError);
       
-      // Try direct database update as fallback
+      // Use RPC for direct database update
       try {
-        console.log('Attempting direct database update for message read status');
+        console.log('Attempting to use RPC for marking message as read');
         
-        const { error: updateError } = await supabase
-          .from('messages')
-          .update({ read: true })
-          .eq('id', messageId);
+        const { error: rpcError } = await supabase.rpc('mark_message_as_read', {
+          message_id: messageId
+        });
         
-        if (updateError) {
-          console.error('Error updating message read status directly:', updateError);
-          throw updateError;
+        if (rpcError) {
+          console.error('Error in RPC call:', rpcError);
+          throw rpcError;
         }
         
-        console.log('Message marked as read successfully via direct database call');
+        console.log('Message marked as read successfully via RPC');
         return true;
-      } catch (dbError) {
-        console.error('Database error in markMessageAsRead:', dbError);
+      } catch (rpcError) {
+        console.error('RPC error in markMessageAsRead:', rpcError);
         
         // For demo purposes, pretend the operation succeeded
         console.log('Using mock success for demo purposes');
@@ -415,24 +412,23 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
     } catch (apiError) {
       console.error('API error in deleteUserMessage:', apiError);
       
-      // Try direct database deletion as fallback
+      // Use RPC for direct database deletion
       try {
-        console.log('Attempting direct database deletion for message');
+        console.log('Attempting to use RPC for deleting message');
         
-        const { error: deleteError } = await supabase
-          .from('messages')
-          .delete()
-          .eq('id', messageId);
+        const { error: rpcError } = await supabase.rpc('delete_message', {
+          message_id: messageId
+        });
         
-        if (deleteError) {
-          console.error('Error deleting message directly:', deleteError);
-          throw deleteError;
+        if (rpcError) {
+          console.error('Error in RPC call:', rpcError);
+          throw rpcError;
         }
         
-        console.log('Message deleted successfully via direct database call');
+        console.log('Message deleted successfully via RPC');
         return true;
-      } catch (dbError) {
-        console.error('Database error in deleteUserMessage:', dbError);
+      } catch (rpcError) {
+        console.error('RPC error in deleteUserMessage:', rpcError);
         
         // For demo purposes, pretend the operation succeeded
         console.log('Using mock success for demo purposes');
