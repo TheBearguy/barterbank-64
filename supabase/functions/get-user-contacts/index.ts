@@ -33,75 +33,48 @@ serve(async (req) => {
     console.log(`Fetching contacts for userId: ${userId}, userRole: ${userRole}`);
 
     try {
-      // Get contacts based on user role
+      // Get contacts based on user role - this is the key part:
+      // For borrowers, fetch lenders
+      // For lenders, fetch borrowers
       if (userRole === 'borrower') {
         // Borrowers can message lenders
         console.log("Fetching all lenders for borrower");
         
-        try {
-          // First try using the stored function
-          const { data: lenders, error: lendersError } = await supabaseClient.rpc('get_all_lenders');
+        const { data: lenders, error: lendersError } = await supabaseClient
+          .from('profiles')
+          .select('id, name')
+          .eq('role', 'lender');
           
-          if (lendersError) {
-            console.error("Error using get_all_lenders RPC:", lendersError);
-            throw lendersError;
-          }
-          
-          data = lenders || [];
-        } catch (rpcError) {
-          // Fallback to direct query if RPC fails
-          console.log("RPC failed, using direct query instead");
-          const { data: lenders, error: queryError } = await supabaseClient
-            .from('profiles')
-            .select('id, name')
-            .eq('role', 'lender');
-            
-          if (queryError) {
-            console.error("Error in direct lenders query:", queryError);
-            throw queryError;
-          }
-          
-          data = lenders || [];
+        if (lendersError) {
+          console.error("Error in lenders query:", lendersError);
+          throw lendersError;
         }
         
+        data = lenders || [];
         console.log(`Found ${data.length} lenders`);
       } else if (userRole === 'lender') {
         // Lenders can message borrowers
         console.log("Fetching all borrowers for lender");
         
-        try {
-          // First try using the stored function
-          const { data: borrowers, error: borrowersError } = await supabaseClient.rpc('get_all_borrowers');
+        const { data: borrowers, error: borrowersError } = await supabaseClient
+          .from('profiles')
+          .select('id, name')
+          .eq('role', 'borrower');
           
-          if (borrowersError) {
-            console.error("Error using get_all_borrowers RPC:", borrowersError);
-            throw borrowersError;
-          }
-          
-          data = borrowers || [];
-        } catch (rpcError) {
-          // Fallback to direct query if RPC fails
-          console.log("RPC failed, using direct query instead");
-          const { data: borrowers, error: queryError } = await supabaseClient
-            .from('profiles')
-            .select('id, name')
-            .eq('role', 'borrower');
-            
-          if (queryError) {
-            console.error("Error in direct borrowers query:", queryError);
-            throw queryError;
-          }
-          
-          data = borrowers || [];
+        if (borrowersError) {
+          console.error("Error in borrowers query:", borrowersError);
+          throw borrowersError;
         }
         
+        data = borrowers || [];
         console.log(`Found ${data.length} borrowers`);
       } else {
         // Fallback to general contacts
-        console.log("Using fallback method to get contacts");
+        console.log("Using fallback method to get contacts for role:", userRole);
         const { data: profiles, error: profilesError } = await supabaseClient
           .from('profiles')
-          .select('id, name, role');
+          .select('id, name, role')
+          .neq('id', userId);
           
         if (profilesError) {
           console.error("Error fetching all profiles:", profilesError);
@@ -109,13 +82,10 @@ serve(async (req) => {
         }
           
         if (profiles) {
-          // Filter out the current user
-          data = profiles
-            .filter(profile => profile.id !== userId)
-            .map(profile => ({
-              id: profile.id,
-              name: profile.name || 'Unknown User'
-            }));
+          data = profiles.map(profile => ({
+            id: profile.id,
+            name: profile.name || 'Unknown User'
+          }));
         }
         
         console.log(`Found ${data.length} general contacts`);

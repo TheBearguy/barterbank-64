@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchUserContacts } from '@/utils/messageUtils';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 export function useContacts() {
   const { user } = useAuth();
@@ -23,43 +22,19 @@ export function useContacts() {
       const userRole = user.user_metadata?.role || '';
       console.log("Loading contacts with user role:", userRole);
       
-      // First try to use the Edge Function
+      if (!userRole) {
+        throw new Error("User role not found in metadata");
+      }
+      
+      // Fetch contacts based on role - uses the Edge Function which handles the role-based filtering
       const contactsData = await fetchUserContacts(user.id, userRole);
       
-      console.log("Contacts loaded:", contactsData);
-      
-      // If contacts were successfully loaded
       if (contactsData && contactsData.length > 0) {
+        console.log("Contacts loaded successfully:", contactsData);
         setContacts(contactsData);
       } else {
-        console.warn("No contacts found from primary source, attempting direct query");
-        
-        // Try a direct database query as fallback
-        try {
-          // Query based on user role - borrowers see lenders, lenders see borrowers
-          let { data, error } = userRole === 'borrower' 
-            ? await supabase.from('profiles').select('id, name').eq('role', 'lender')
-            : await supabase.from('profiles').select('id, name').eq('role', 'borrower');
-          
-          if (error) throw error;
-          
-          if (data && data.length > 0) {
-            const formattedContacts = data.map(profile => ({
-              id: profile.id,
-              name: profile.name || 'Unknown User'
-            }));
-            
-            console.log("Contacts loaded from database:", formattedContacts);
-            setContacts(formattedContacts);
-          } else {
-            // Fall back to mock contacts
-            console.warn("No contacts found in direct query");
-            showMockContactsMessage();
-          }
-        } catch (dbError) {
-          console.error("Database query failed:", dbError);
-          showMockContactsMessage();
-        }
+        console.warn("No contacts found, showing mock contacts");
+        showMockContactsMessage();
       }
     } catch (err) {
       console.error('Error loading contacts:', err);
