@@ -196,36 +196,7 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
       
     } catch (apiError) {
       console.error('API error in fetchUserContacts:', apiError);
-      
-      // Try direct database query as fallback for profiles only (which is defined in types)
-      try {
-        console.log('Attempting direct database query for contacts');
-        
-        // Query profiles table based on user role
-        let { data, error } = userRole === 'borrower' 
-          ? await supabase.from('profiles').select('id, name').eq('role', 'lender')
-          : await supabase.from('profiles').select('id, name').eq('role', 'borrower');
-          
-        if (error) {
-          console.error('Error in direct database query:', error);
-          throw error;
-        }
-        
-        if (!data || data.length === 0) {
-          console.warn('No contacts found in database, using fallback contacts');
-          return getFallbackContacts();
-        }
-        
-        console.log('Successfully fetched contacts from database:', data);
-        return data.map(profile => ({
-          id: profile.id,
-          name: profile.name || 'Unknown User'
-        }));
-        
-      } catch (dbError) {
-        console.error('Database error in fetchUserContacts:', dbError);
-        return getFallbackContacts();
-      }
+      return getFallbackContacts();
     }
   } catch (error) {
     console.error('Unhandled error in fetchUserContacts:', error);

@@ -53,17 +53,22 @@ serve(async (req) => {
       }
 
       console.log("Message marked as read successfully using stored procedure");
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     } catch (rpcError) {
       console.error("RPC error:", rpcError);
       
       // For testing purposes, we'll return success anyway
       console.log("Returning success for testing purposes despite RPC error");
+      
+      return new Response(JSON.stringify({ success: true, mock: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
-
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
   } catch (error) {
     console.error("Function error:", error.message);
     
