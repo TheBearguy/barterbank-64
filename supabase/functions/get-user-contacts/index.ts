@@ -102,8 +102,11 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("Function error:", error.message);
-    // Return empty array on error
-    return new Response(JSON.stringify([]), {
+    // Return empty array on error with error message in the body for debugging
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      source: "get-user-contacts edge function" 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

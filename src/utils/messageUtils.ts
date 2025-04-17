@@ -15,7 +15,7 @@ export const fetchInboxMessages = async (userId: string): Promise<Message[]> => 
     });
     
     if (error) {
-      console.error('Error fetching inbox messages:', error);
+      console.error('Error fetching inbox messages from Edge Function:', error);
       throw error;
     }
     
@@ -23,7 +23,7 @@ export const fetchInboxMessages = async (userId: string): Promise<Message[]> => 
     return data && Array.isArray(data) ? formatMessages(data, 'inbox') : [];
   } catch (error) {
     console.error('Error in fetchInboxMessages:', error);
-    return []; // Return empty array on error
+    throw error; // Let the calling function handle fallback
   }
 };
 
@@ -40,7 +40,7 @@ export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
     });
     
     if (error) {
-      console.error('Error fetching sent messages:', error);
+      console.error('Error fetching sent messages from Edge Function:', error);
       throw error;
     }
     
@@ -48,7 +48,7 @@ export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
     return data && Array.isArray(data) ? formatMessages(data, 'sent') : [];
   } catch (error) {
     console.error('Error in fetchSentMessages:', error);
-    return []; // Return empty array on error
+    throw error; // Let the calling function handle fallback
   }
 };
 
@@ -96,7 +96,7 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
     
     if (!userRole) {
       console.warn("No user role provided");
-      return [];
+      throw new Error("No user role provided");
     }
     
     // Use Edge Function to get user contacts
@@ -114,7 +114,7 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
     
     if (!data || !Array.isArray(data)) {
       console.warn('No contacts returned from Edge Function or invalid format');
-      return [];
+      throw new Error('Invalid data format from Edge Function');
     }
     
     const formattedContacts = formatContacts(data);
@@ -122,7 +122,7 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
     return formattedContacts;
   } catch (error) {
     console.error('Error in fetchUserContacts:', error);
-    return []; // Return empty array on error
+    throw error; // Let the calling function handle fallback
   }
 };
 
@@ -178,7 +178,7 @@ export const sendMessageToUser = async (
     return true;
   } catch (err) {
     console.error('Error in sendMessageToUser:', err);
-    return false;
+    throw err; // Let the calling function handle fallback
   }
 };
 
@@ -203,7 +203,7 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
     return true;
   } catch (err) {
     console.error('Error in markMessageAsRead:', err);
-    return false;
+    throw err; // Let the calling function handle fallback
   }
 };
 
@@ -228,6 +228,6 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
     return true;
   } catch (err) {
     console.error('Error in deleteUserMessage:', err);
-    return false;
+    throw err; // Let the calling function handle fallback
   }
 };

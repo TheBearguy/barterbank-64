@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchUserContacts } from '@/utils/messageUtils';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useContacts() {
   const { user } = useAuth();
@@ -23,23 +24,99 @@ export function useContacts() {
       console.log("Loading contacts with user role:", userRole);
       
       if (!userRole) {
-        throw new Error("User role not found in metadata");
+        console.warn("User role not found in metadata, using direct fallback");
+        // Fallback: Direct query for contacts if Edge Function fails
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .neq('id', user.id);
+          
+        if (profilesError) {
+          console.error("Direct query fallback error:", profilesError);
+          throw profilesError;
+        }
+        
+        if (profiles && profiles.length > 0) {
+          console.log("Loaded contacts via direct query fallback:", profiles.length);
+          setContacts(profiles);
+          return;
+        }
       }
       
-      // Fetch contacts based on role
-      const contactsData = await fetchUserContacts(user.id, userRole);
-      
-      if (contactsData && contactsData.length > 0) {
-        console.log("Contacts loaded successfully:", contactsData);
-        setContacts(contactsData);
-      } else {
-        console.warn("No contacts found");
-        setContacts([]);
-        toast({
-          title: "No contacts found",
-          description: "There are no contacts available for your account at this time.",
-          variant: "default"
-        });
+      // Try to fetch contacts using Edge Function first
+      try {
+        const contactsData = await fetchUserContacts(user.id, userRole);
+        
+        if (contactsData && contactsData.length > 0) {
+          console.log("Contacts loaded successfully via Edge Function:", contactsData);
+          setContacts(contactsData);
+        } else {
+          console.warn("No contacts found via Edge Function, trying direct query");
+          
+          // Fallback: Direct query based on role
+          let queryBuilder = supabase.from('profiles').select('id, name');
+          
+          if (userRole === 'borrower') {
+            queryBuilder = queryBuilder.eq('role', 'lender');
+          } else if (userRole === 'lender') {
+            queryBuilder = queryBuilder.eq('role', 'borrower');
+          } else {
+            queryBuilder = queryBuilder.neq('id', user.id);
+          }
+          
+          const { data: profiles, error: profilesError } = await queryBuilder;
+          
+          if (profilesError) {
+            console.error("Direct query fallback error:", profilesError);
+            throw profilesError;
+          }
+          
+          if (profiles && profiles.length > 0) {
+            console.log("Loaded contacts via direct query fallback:", profiles.length);
+            setContacts(profiles);
+          } else {
+            console.warn("No contacts found with any method");
+            setContacts([]);
+            toast({
+              title: "No contacts found",
+              description: "There are no contacts available for your account at this time.",
+              variant: "default"
+            });
+          }
+        }
+      } catch (edgeFunctionError) {
+        console.error("Edge Function error, using direct query fallback:", edgeFunctionError);
+        
+        // Fallback: Direct query based on role
+        let queryBuilder = supabase.from('profiles').select('id, name');
+        
+        if (userRole === 'borrower') {
+          queryBuilder = queryBuilder.eq('role', 'lender');
+        } else if (userRole === 'lender') {
+          queryBuilder = queryBuilder.eq('role', 'borrower');
+        } else {
+          queryBuilder = queryBuilder.neq('id', user.id);
+        }
+        
+        const { data: profiles, error: profilesError } = await queryBuilder;
+        
+        if (profilesError) {
+          console.error("Direct query fallback error:", profilesError);
+          throw profilesError;
+        }
+        
+        if (profiles && profiles.length > 0) {
+          console.log("Loaded contacts via direct query fallback after Edge Function error:", profiles.length);
+          setContacts(profiles);
+        } else {
+          console.warn("No contacts found with any method");
+          setContacts([]);
+          toast({
+            title: "No contacts found",
+            description: "There are no contacts available for your account at this time.",
+            variant: "default"
+          });
+        }
       }
     } catch (err) {
       console.error('Error loading contacts:', err);
