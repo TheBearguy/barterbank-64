@@ -94,9 +94,9 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
   try {
     console.log("Fetching contacts with role:", userRole);
     
-    if (!userRole) {
-      console.warn("No user role provided");
-      throw new Error("No user role provided");
+    if (!userId) {
+      console.warn("No user ID provided");
+      throw new Error("User ID is required");
     }
     
     // Use Edge Function to get user contacts

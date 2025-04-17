@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Message } from '@/components/messaging/MessageList';
 import { useContacts } from '@/hooks/useContacts';
@@ -44,38 +44,25 @@ export function useMessages() {
         } catch (inboxError) {
           console.error('Error fetching inbox messages from Edge Function:', inboxError);
           
-          // Fallback: Direct query for inbox messages
+          // Fallback: Use RPC function instead of direct table query
           try {
-            console.log("Using fallback direct query for inbox messages");
+            console.log("Using fallback RPC function for inbox messages");
             const { data: inboxData, error: inboxQueryError } = await supabase
-              .from('messages')
-              .select(`
-                id, 
-                sender_id,
-                sender:profiles!sender_id(name),
-                recipient_id,
-                subject,
-                content,
-                created_at,
-                read,
-                reply_to
-              `)
-              .eq('recipient_id', user.id)
-              .order('created_at', { ascending: false });
+              .rpc('get_inbox_messages', { user_id: user.id });
               
             if (inboxQueryError) {
-              console.error("Inbox direct query error:", inboxQueryError);
+              console.error("Inbox RPC function error:", inboxQueryError);
               throw inboxQueryError;
             }
             
             if (inboxData && inboxData.length > 0) {
-              console.log(`Found ${inboxData.length} inbox messages via direct query`);
+              console.log(`Found ${inboxData.length} inbox messages via RPC function`);
               
               // Format the data
               const formattedInbox = inboxData.map(message => ({
                 id: message.id,
                 sender_id: message.sender_id,
-                sender_name: message.sender?.name || "Unknown User",
+                sender_name: message.sender_name || "Unknown User",
                 recipient_id: message.recipient_id,
                 subject: message.subject,
                 content: message.content,
@@ -86,7 +73,7 @@ export function useMessages() {
               
               setInboxMessages(formattedInbox);
             } else {
-              console.log("No inbox messages found via direct query");
+              console.log("No inbox messages found via RPC function");
               setInboxMessages([]);
             }
           } catch (fallbackError) {
@@ -102,32 +89,19 @@ export function useMessages() {
         } catch (sentError) {
           console.error('Error fetching sent messages from Edge Function:', sentError);
           
-          // Fallback: Direct query for sent messages
+          // Fallback: Use RPC function instead of direct table query
           try {
-            console.log("Using fallback direct query for sent messages");
+            console.log("Using fallback RPC function for sent messages");
             const { data: sentData, error: sentQueryError } = await supabase
-              .from('messages')
-              .select(`
-                id, 
-                sender_id,
-                recipient_id,
-                recipient:profiles!recipient_id(name),
-                subject,
-                content,
-                created_at,
-                read,
-                reply_to
-              `)
-              .eq('sender_id', user.id)
-              .order('created_at', { ascending: false });
+              .rpc('get_sent_messages', { user_id: user.id });
               
             if (sentQueryError) {
-              console.error("Sent direct query error:", sentQueryError);
+              console.error("Sent RPC function error:", sentQueryError);
               throw sentQueryError;
             }
             
             if (sentData && sentData.length > 0) {
-              console.log(`Found ${sentData.length} sent messages via direct query`);
+              console.log(`Found ${sentData.length} sent messages via RPC function`);
               
               // Format the data
               const formattedSent = sentData.map(message => ({
@@ -135,7 +109,7 @@ export function useMessages() {
                 sender_id: message.sender_id,
                 sender_name: 'You',
                 recipient_id: message.recipient_id,
-                recipient_name: message.recipient?.name || "Unknown User",
+                recipient_name: message.recipient_name || "Unknown User",
                 subject: message.subject,
                 content: message.content,
                 created_at: message.created_at,
@@ -145,7 +119,7 @@ export function useMessages() {
               
               setSentMessages(formattedSent);
             } else {
-              console.log("No sent messages found via direct query");
+              console.log("No sent messages found via RPC function");
               setSentMessages([]);
             }
           } catch (fallbackError) {
@@ -197,27 +171,24 @@ export function useMessages() {
       } catch (edgeFunctionError) {
         console.error("Error sending message via Edge Function:", edgeFunctionError);
         
-        // Fallback: Direct insert
+        // Fallback: Use RPC function
         try {
-          console.log("Using fallback direct insert for sending message");
-          const { error: insertError } = await supabase
-            .from('messages')
-            .insert({
-              sender_id: user.id,
-              recipient_id: recipientId,
-              subject,
-              content,
-              created_at: new Date().toISOString(),
-              read: false,
-              reply_to: replyToId || null
+          console.log("Using fallback RPC function for sending message");
+          const { data, error: rpcError } = await supabase
+            .rpc('send_message', {
+              p_sender_id: user.id,
+              p_recipient_id: recipientId,
+              p_subject: subject,
+              p_content: content,
+              p_reply_to: replyToId || null
             });
             
-          if (insertError) {
-            console.error("Direct insert error:", insertError);
-            throw insertError;
+          if (rpcError) {
+            console.error("RPC function error:", rpcError);
+            throw rpcError;
           }
           
-          console.log("Message sent successfully via direct insert");
+          console.log("Message sent successfully via RPC function");
           refreshMessages();
           return true;
         } catch (fallbackError) {
@@ -253,21 +224,18 @@ export function useMessages() {
       } catch (edgeFunctionError) {
         console.error("Error marking message as read via Edge Function:", edgeFunctionError);
         
-        // Fallback: Direct update
+        // Fallback: Use RPC function
         try {
-          console.log("Using fallback direct update for marking message as read");
-          const { error: updateError } = await supabase
-            .from('messages')
-            .update({ read: true })
-            .eq('id', messageId)
-            .eq('recipient_id', user?.id);
+          console.log("Using fallback RPC function for marking message as read");
+          const { error: rpcError } = await supabase
+            .rpc('mark_message_as_read', { message_id: messageId });
             
-          if (updateError) {
-            console.error("Direct update error:", updateError);
-            throw updateError;
+          if (rpcError) {
+            console.error("RPC function error:", rpcError);
+            throw rpcError;
           }
           
-          console.log("Message marked as read via direct update");
+          console.log("Message marked as read via RPC function");
           // Update local state
           setInboxMessages(prevMessages => 
             prevMessages.map(msg => 
@@ -316,21 +284,18 @@ export function useMessages() {
       } catch (edgeFunctionError) {
         console.error("Error deleting message via Edge Function:", edgeFunctionError);
         
-        // Fallback: Direct delete
+        // Fallback: Use RPC function
         try {
-          console.log("Using fallback direct delete for message");
-          const { error: deleteError } = await supabase
-            .from('messages')
-            .delete()
-            .eq('id', messageId)
-            .or(`sender_id.eq.${user?.id},recipient_id.eq.${user?.id}`);
+          console.log("Using fallback RPC function for message deletion");
+          const { error: rpcError } = await supabase
+            .rpc('delete_message', { message_id: messageId });
             
-          if (deleteError) {
-            console.error("Direct delete error:", deleteError);
-            throw deleteError;
+          if (rpcError) {
+            console.error("RPC function error:", rpcError);
+            throw rpcError;
           }
           
-          console.log("Message deleted via direct delete");
+          console.log("Message deleted via RPC function");
           // Update local state
           setInboxMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
           setSentMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
