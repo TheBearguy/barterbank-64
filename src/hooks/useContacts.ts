@@ -26,43 +26,35 @@ export function useContacts() {
         throw new Error("User role not found in metadata");
       }
       
-      // Fetch contacts based on role - uses the Edge Function which handles the role-based filtering
+      // Fetch contacts based on role
       const contactsData = await fetchUserContacts(user.id, userRole);
       
       if (contactsData && contactsData.length > 0) {
         console.log("Contacts loaded successfully:", contactsData);
         setContacts(contactsData);
       } else {
-        console.warn("No contacts found, showing mock contacts");
-        showMockContactsMessage();
+        console.warn("No contacts found");
+        setContacts([]);
+        toast({
+          title: "No contacts found",
+          description: "There are no contacts available for your account at this time.",
+          variant: "default"
+        });
       }
     } catch (err) {
       console.error('Error loading contacts:', err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setContacts([]);
       
-      // Add mock contacts as fallback on error
-      showMockContactsMessage();
+      toast({
+        title: "Error loading contacts",
+        description: "Could not load your contacts. Please try again later.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
   }, [user, toast]);
-  
-  const showMockContactsMessage = () => {
-    // Add mock contacts as fallback
-    const mockContacts = [
-      { id: "mock-user-1", name: "Test User 1" },
-      { id: "mock-user-2", name: "Test User 2" },
-      { id: "mock-user-3", name: "Test User 3" }
-    ];
-    
-    setContacts(mockContacts);
-    
-    toast({
-      title: "Using demo contacts",
-      description: "Couldn't fetch your contacts. Using demo contacts for now.",
-      variant: "default"
-    });
-  };
   
   useEffect(() => {
     loadContacts();

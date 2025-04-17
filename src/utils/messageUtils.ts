@@ -9,56 +9,21 @@ export const fetchInboxMessages = async (userId: string): Promise<Message[]> => 
   try {
     console.log("Fetching inbox messages for user:", userId);
     
-    try {
-      // Use Edge Function to get inbox messages
-      const { data: inboxData, error: inboxError } = await supabase.functions.invoke('get-inbox-messages', {
-        body: { userId }
-      });
-        
-      if (inboxError) {
-        console.error('Error fetching inbox messages:', inboxError);
-        throw inboxError;
-      }
-      
-      // Format inbox messages
-      return inboxData ? formatMessages(inboxData, 'inbox') : [];
-    } catch (dbError) {
-      console.error('Error fetching inbox messages:', dbError);
-      
-      // Return mock data on error
-      const mockData = [
-        {
-          id: "mock-inbox-1",
-          sender_id: "mock-user-1",
-          sender_name: "Test User 1",
-          recipient_id: userId,
-          subject: "Mock Inbox Message",
-          content: "This is a mock inbox message for testing purposes.",
-          created_at: new Date().toISOString(),
-          read: false,
-          reply_to: null
-        }
-      ];
-      
-      return mockData;
+    // Use Edge Function to get inbox messages
+    const { data, error } = await supabase.functions.invoke('get-inbox-messages', {
+      body: { userId }
+    });
+    
+    if (error) {
+      console.error('Error fetching inbox messages:', error);
+      throw error;
     }
+    
+    // Format and return inbox messages
+    return data && Array.isArray(data) ? formatMessages(data, 'inbox') : [];
   } catch (error) {
     console.error('Error in fetchInboxMessages:', error);
-    
-    // Return mock data on error
-    return [
-      {
-        id: "mock-inbox-1",
-        sender_id: "mock-user-1",
-        sender_name: "Test User 1",
-        recipient_id: userId,
-        subject: "Mock Inbox Message",
-        content: "This is a mock inbox message for testing purposes.",
-        created_at: new Date().toISOString(),
-        read: false,
-        reply_to: null
-      }
-    ];
+    return []; // Return empty array on error
   }
 };
 
@@ -69,58 +34,21 @@ export const fetchSentMessages = async (userId: string): Promise<Message[]> => {
   try {
     console.log("Fetching sent messages for user:", userId);
     
-    try {
-      // Use Edge Function to get sent messages
-      const { data: sentData, error: sentError } = await supabase.functions.invoke('get-sent-messages', {
-        body: { userId }
-      });
-        
-      if (sentError) {
-        console.error('Error fetching sent messages:', sentError);
-        throw sentError;
-      }
-      
-      // Format sent messages
-      return sentData ? formatMessages(sentData, 'sent') : [];
-    } catch (dbError) {
-      console.error('Error fetching sent messages from backend:', dbError);
-      
-      // Return mock data on error
-      const mockData = [
-        {
-          id: "mock-sent-1",
-          sender_id: userId,
-          sender_name: 'You',
-          recipient_id: "mock-user-1",
-          recipient_name: "Test User 1",
-          subject: "Mock Sent Message",
-          content: "This is a mock sent message for testing purposes.",
-          created_at: new Date().toISOString(),
-          read: true,
-          reply_to: null
-        }
-      ];
-      
-      return mockData;
+    // Use Edge Function to get sent messages
+    const { data, error } = await supabase.functions.invoke('get-sent-messages', {
+      body: { userId }
+    });
+    
+    if (error) {
+      console.error('Error fetching sent messages:', error);
+      throw error;
     }
+    
+    // Format and return sent messages
+    return data && Array.isArray(data) ? formatMessages(data, 'sent') : [];
   } catch (error) {
     console.error('Error in fetchSentMessages:', error);
-    
-    // Return mock data on error
-    return [
-      {
-        id: "mock-sent-1",
-        sender_id: userId,
-        sender_name: 'You',
-        recipient_id: "mock-user-1",
-        recipient_name: "Test User 1",
-        subject: "Mock Sent Message",
-        content: "This is a mock sent message for testing purposes.",
-        created_at: new Date().toISOString(),
-        read: true,
-        reply_to: null
-      }
-    ];
+    return []; // Return empty array on error
   }
 };
 
@@ -167,57 +95,42 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
     console.log("Fetching contacts with role:", userRole);
     
     if (!userRole) {
-      console.warn("No user role provided, using fallback contacts");
-      return getFallbackContacts();
+      console.warn("No user role provided");
+      return [];
     }
     
-    try {
-      // Use Edge Function to get user contacts
-      const { data, error } = await supabase.functions.invoke('get-user-contacts', {
-        body: { 
-          userId,
-          userRole
-        }
-      });
-      
-      if (error) {
-        console.error('Error fetching contacts from Edge Function:', error);
-        throw error;
+    // Use Edge Function to get user contacts
+    const { data, error } = await supabase.functions.invoke('get-user-contacts', {
+      body: { 
+        userId,
+        userRole
       }
-      
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        console.warn('No contacts returned from Edge Function, using fallback contacts');
-        return getFallbackContacts();
-      }
-      
-      const formattedContacts = formatContacts(data);
-      console.log('Successfully fetched contacts:', formattedContacts);
-      return formattedContacts;
-      
-    } catch (apiError) {
-      console.error('API error in fetchUserContacts:', apiError);
-      return getFallbackContacts();
+    });
+    
+    if (error) {
+      console.error('Error fetching contacts from Edge Function:', error);
+      throw error;
     }
+    
+    if (!data || !Array.isArray(data)) {
+      console.warn('No contacts returned from Edge Function or invalid format');
+      return [];
+    }
+    
+    const formattedContacts = formatContacts(data);
+    console.log('Successfully fetched contacts:', formattedContacts);
+    return formattedContacts;
   } catch (error) {
-    console.error('Unhandled error in fetchUserContacts:', error);
-    return getFallbackContacts();
+    console.error('Error in fetchUserContacts:', error);
+    return []; // Return empty array on error
   }
-};
-
-// Helper function to provide fallback contacts
-const getFallbackContacts = (): {id: string, name: string}[] => {
-  return [
-    { id: "mock-user-1", name: "Test User 1" },
-    { id: "mock-user-2", name: "Test User 2" },
-    { id: "mock-user-3", name: "Test User 3" }
-  ];
 };
 
 // Helper function to format contacts
 const formatContacts = (data: any): {id: string, name: string}[] => {
   if (!data || !Array.isArray(data)) {
     console.warn("Invalid contacts data format:", data);
-    return getFallbackContacts();
+    return [];
   }
   
   return data.map(contact => ({
@@ -245,41 +158,27 @@ export const sendMessageToUser = async (
       return false;
     }
     
-    try {
-      // Use Edge Function to send message
-      const { data, error } = await supabase.functions.invoke('send-message', {
-        body: { 
-          senderId,
-          recipientId,
-          subject,
-          content,
-          replyToId: replyToId || null
-        }
-      });
-      
-      if (error) {
-        console.error('Error invoking send-message function:', error);
-        throw error;
+    // Use Edge Function to send message
+    const { data, error } = await supabase.functions.invoke('send-message', {
+      body: { 
+        senderId,
+        recipientId,
+        subject,
+        content,
+        replyToId: replyToId || null
       }
-      
-      if (!data?.success) {
-        console.error('Failed to send message:', data?.error || 'Unknown error');
-        throw new Error(data?.error || 'Failed to send message');
-      }
-      
-      console.log('Message sent successfully');
-      return true;
-    } catch (apiError) {
-      console.error('API error in sendMessageToUser:', apiError);
-      
-      // For demo purposes, pretend the message was sent
-      console.log('Using mock success for demo purposes');
-      return true;
+    });
+    
+    if (error) {
+      console.error('Error invoking send-message function:', error);
+      throw error;
     }
-  } catch (err) {
-    console.error('Unhandled error in sendMessageToUser:', err);
-    // For demo purposes, pretend the message was sent
+    
+    console.log('Message sent successfully');
     return true;
+  } catch (err) {
+    console.error('Error in sendMessageToUser:', err);
+    return false;
   }
 };
 
@@ -290,30 +189,21 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
   try {
     console.log("Marking message as read:", messageId);
     
-    try {
-      // Use Edge Function to mark message as read
-      const { data, error } = await supabase.functions.invoke('mark-message-as-read', {
-        body: { messageId }
-      });
-      
-      if (error) {
-        console.error('Error invoking mark-message-as-read function:', error);
-        throw error;
-      }
-      
-      console.log('Message marked as read successfully via Edge Function');
-      return true;
-    } catch (apiError) {
-      console.error('API error in markMessageAsRead:', apiError);
-      
-      // For demo purposes, pretend the operation succeeded
-      console.log('Using mock success for demo purposes');
-      return true;
+    // Use Edge Function to mark message as read
+    const { data, error } = await supabase.functions.invoke('mark-message-as-read', {
+      body: { messageId }
+    });
+    
+    if (error) {
+      console.error('Error invoking mark-message-as-read function:', error);
+      throw error;
     }
-  } catch (err) {
-    console.error('Unhandled error in markMessageAsRead:', err);
-    // For demo purposes, pretend the operation succeeded
+    
+    console.log('Message marked as read successfully');
     return true;
+  } catch (err) {
+    console.error('Error in markMessageAsRead:', err);
+    return false;
   }
 };
 
@@ -324,29 +214,20 @@ export const deleteUserMessage = async (messageId: string): Promise<boolean> => 
   try {
     console.log("Deleting message:", messageId);
     
-    try {
-      // Use Edge Function to delete message
-      const { data, error } = await supabase.functions.invoke('delete-message', {
-        body: { messageId }
-      });
-      
-      if (error) {
-        console.error('Error invoking delete-message function:', error);
-        throw error;
-      }
-      
-      console.log('Message deleted successfully via Edge Function');
-      return true;
-    } catch (apiError) {
-      console.error('API error in deleteUserMessage:', apiError);
-      
-      // For demo purposes, pretend the operation succeeded
-      console.log('Using mock success for demo purposes');
-      return true;
+    // Use Edge Function to delete message
+    const { data, error } = await supabase.functions.invoke('delete-message', {
+      body: { messageId }
+    });
+    
+    if (error) {
+      console.error('Error invoking delete-message function:', error);
+      throw error;
     }
-  } catch (err) {
-    console.error('Unhandled error in deleteUserMessage:', err);
-    // For demo purposes, pretend the operation succeeded
+    
+    console.log('Message deleted successfully');
     return true;
+  } catch (err) {
+    console.error('Error in deleteUserMessage:', err);
+    return false;
   }
 };
