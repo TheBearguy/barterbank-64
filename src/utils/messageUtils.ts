@@ -22,7 +22,7 @@ export interface Message {
 
 export const fetchMessages = async (): Promise<Message[]> => {
   const { data: messages, error } = await supabase
-    .rpc('get_messages_for_user')
+    .rpc('get_messages_for_user');
     
   if (error) {
     console.error('Error fetching messages:', error);
@@ -34,7 +34,7 @@ export const fetchMessages = async (): Promise<Message[]> => {
 
 export const fetchAvailableContacts = async (userId: string): Promise<Contact[]> => {
   const { data: contacts, error } = await supabase
-    .rpc('get_available_contacts', { p_user_id: userId })
+    .rpc('get_available_contacts', { p_user_id: userId });
     
   if (error) {
     console.error('Error fetching contacts:', error);

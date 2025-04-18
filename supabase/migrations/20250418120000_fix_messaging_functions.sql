@@ -85,3 +85,29 @@ BEGIN
     WHERE p.id != exclude_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a flexible function to get available contacts based on user role
+CREATE OR REPLACE FUNCTION get_available_contacts(p_user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    role TEXT
+) AS $$
+DECLARE
+    v_user_role TEXT;
+BEGIN
+    -- Get the role of the current user
+    SELECT role INTO v_user_role FROM profiles WHERE id = p_user_id;
+    
+    IF v_user_role = 'borrower' THEN
+        -- Borrowers can message lenders
+        RETURN QUERY SELECT * FROM get_all_lenders();
+    ELSIF v_user_role = 'lender' THEN
+        -- Lenders can message borrowers
+        RETURN QUERY SELECT * FROM get_all_borrowers();
+    ELSE
+        -- Fallback to all users except current user
+        RETURN QUERY SELECT * FROM get_all_users_except(p_user_id);
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

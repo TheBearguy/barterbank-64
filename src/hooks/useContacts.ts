@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchAvailableContacts, Contact } from '@/utils/messageUtils';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useContacts() {
   const { user } = useAuth();
@@ -30,7 +31,21 @@ export function useContacts() {
         setContacts(contactsData);
       } else {
         console.warn("No contacts found, using empty contacts list");
-        setContacts([]);
+        // Add a fallback to get all profiles if no contacts were found
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name, role')
+          .neq('id', user.id);
+          
+        if (error) {
+          console.error('Fallback profiles query error:', error);
+          setContacts([]);
+        } else if (data && data.length > 0) {
+          console.log("Fallback profiles found:", data);
+          setContacts(data);
+        } else {
+          setContacts([]);
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
