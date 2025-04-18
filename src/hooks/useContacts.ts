@@ -30,8 +30,9 @@ export function useContacts() {
         console.log("Contacts loaded successfully:", contactsData);
         setContacts(contactsData);
       } else {
-        console.warn("No contacts found, using empty contacts list");
-        // Add a fallback to get all profiles if no contacts were found
+        console.warn("No contacts found via RPC, using fallback method");
+        
+        // Add a fallback to get all profiles if no contacts were found through RPC
         const { data, error } = await supabase
           .from('profiles')
           .select('id, name, role')
@@ -39,11 +40,12 @@ export function useContacts() {
           
         if (error) {
           console.error('Fallback profiles query error:', error);
-          setContacts([]);
+          throw new Error('Failed to load contacts via fallback method');
         } else if (data && data.length > 0) {
           console.log("Fallback profiles found:", data);
           setContacts(data);
         } else {
+          console.warn("No profiles found in fallback query either");
           setContacts([]);
         }
       }

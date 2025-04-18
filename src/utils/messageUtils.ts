@@ -21,8 +21,9 @@ export interface Message {
 }
 
 export const fetchMessages = async (): Promise<Message[]> => {
+  // Use typed parameters for the RPC call
   const { data: messages, error } = await supabase
-    .rpc('get_messages_for_user');
+    .rpc('get_messages_for_user', {});
     
   if (error) {
     console.error('Error fetching messages:', error);
@@ -33,6 +34,7 @@ export const fetchMessages = async (): Promise<Message[]> => {
 };
 
 export const fetchAvailableContacts = async (userId: string): Promise<Contact[]> => {
+  // Use typed parameters for the RPC call
   const { data: contacts, error } = await supabase
     .rpc('get_available_contacts', { p_user_id: userId });
     
@@ -52,7 +54,7 @@ export const sendMessage = async (
   replyToId?: string
 ): Promise<boolean> => {
   try {
-    // Use RPC function to send message
+    // Use properly typed parameters for the RPC call
     const { error } = await supabase
       .rpc('send_message', {
         p_sender_id: senderId,
@@ -72,7 +74,7 @@ export const sendMessage = async (
 
 export const markMessageAsRead = async (messageId: string): Promise<boolean> => {
   try {
-    // Use RPC function to mark message as read
+    // Use properly typed parameters for the RPC call
     const { error } = await supabase
       .rpc('mark_message_as_read', {
         message_id: messageId
@@ -88,7 +90,7 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
 
 export const deleteMessage = async (messageId: string): Promise<boolean> => {
   try {
-    // Use RPC function to delete message
+    // Use properly typed parameters for the RPC call
     const { error } = await supabase
       .rpc('delete_message', {
         message_id: messageId

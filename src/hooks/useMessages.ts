@@ -24,11 +24,17 @@ export function useMessages() {
     if (!user) return;
     
     try {
+      setLoading(true);
       setError(null);
+      console.log("Fetching messages...");
+      
       const fetchedMessages = await fetchMessages();
+      console.log("Messages fetched:", fetchedMessages.length);
       setMessages(fetchedMessages);
       
+      console.log("Fetching contacts for user:", user.id);
       const fetchedContacts = await fetchAvailableContacts(user.id);
+      console.log("Contacts fetched:", fetchedContacts.length);
       setContacts(fetchedContacts);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -45,13 +51,16 @@ export function useMessages() {
   };
 
   useEffect(() => {
-    refreshMessages();
+    if (user) {
+      refreshMessages();
+    }
   }, [user]);
 
   const sendMessage = async (subject: string, content: string, recipientId: string, replyToId?: string) => {
     if (!user) return false;
     
     try {
+      console.log("Sending message to recipient:", recipientId);
       await sendMessageUtil(user.id, recipientId, subject, content, replyToId);
       refreshMessages();
       return true;
