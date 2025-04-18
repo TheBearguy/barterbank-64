@@ -44,6 +44,31 @@ export const fetchAvailableContacts = async (userId: string): Promise<Contact[]>
   return contacts || [];
 };
 
+export const fetchUserContacts = async (userId: string, userRole?: string): Promise<Contact[]> => {
+  try {
+    // Call the Edge Function to get contacts
+    const response = await fetch(`${supabase.supabaseUrl}/functions/v1/get-user-contacts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabase.auth.getSession().then(({ data }) => data.session?.access_token)}`
+      },
+      body: JSON.stringify({ userId, userRole })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Edge function returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching user contacts:', error);
+    // Fallback to RPC function
+    return fetchAvailableContacts(userId);
+  }
+};
+
 export const sendMessage = async (
   senderId: string,
   recipientId: string,
@@ -52,14 +77,14 @@ export const sendMessage = async (
   replyToId?: string
 ): Promise<boolean> => {
   try {
+    // Use RPC function to send message
     const { error } = await supabase
-      .from('messages')
-      .insert({
-        sender_id: senderId,
-        recipient_id: recipientId,
-        subject,
-        content,
-        reply_to: replyToId || null
+      .rpc('send_message', {
+        p_sender_id: senderId,
+        p_recipient_id: recipientId,
+        p_subject: subject,
+        p_content: content,
+        p_reply_to: replyToId || null
       });
 
     if (error) throw error;
@@ -72,10 +97,11 @@ export const sendMessage = async (
 
 export const markMessageAsRead = async (messageId: string): Promise<boolean> => {
   try {
+    // Use RPC function to mark message as read
     const { error } = await supabase
-      .from('messages')
-      .update({ read: true })
-      .eq('id', messageId);
+      .rpc('mark_message_as_read', {
+        message_id: messageId
+      });
 
     if (error) throw error;
     return true;
@@ -87,10 +113,11 @@ export const markMessageAsRead = async (messageId: string): Promise<boolean> => 
 
 export const deleteMessage = async (messageId: string): Promise<boolean> => {
   try {
+    // Use RPC function to delete message
     const { error } = await supabase
-      .from('messages')
-      .delete()
-      .eq('id', messageId);
+      .rpc('delete_message', {
+        message_id: messageId
+      });
 
     if (error) throw error;
     return true;

@@ -39,8 +39,77 @@ WITH CHECK (
     )
 );
 
+-- Create or replace the send_message function
+CREATE OR REPLACE FUNCTION public.send_message(
+  p_sender_id UUID,
+  p_recipient_id UUID,
+  p_subject TEXT,
+  p_content TEXT,
+  p_reply_to UUID DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_message_id UUID;
+BEGIN
+  INSERT INTO public.messages (
+    sender_id,
+    recipient_id,
+    subject,
+    content,
+    reply_to
+  ) VALUES (
+    p_sender_id,
+    p_recipient_id,
+    p_subject,
+    p_content,
+    p_reply_to
+  )
+  RETURNING id INTO v_message_id;
+  
+  RETURN v_message_id;
+END;
+$$;
+
+-- Create or replace the mark_message_as_read function
+CREATE OR REPLACE FUNCTION public.mark_message_as_read(
+  message_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE public.messages
+  SET read = TRUE
+  WHERE id = message_id
+  AND recipient_id = auth.uid();
+  
+  RETURN FOUND;
+END;
+$$;
+
+-- Create or replace the delete_message function
+CREATE OR REPLACE FUNCTION public.delete_message(
+  message_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  DELETE FROM public.messages
+  WHERE id = message_id
+  AND (sender_id = auth.uid() OR recipient_id = auth.uid());
+  
+  RETURN FOUND;
+END;
+$$;
+
 -- Functions for fetching messages
-CREATE OR REPLACE FUNCTION get_messages_for_user(p_user_id UUID)
+CREATE OR REPLACE FUNCTION get_messages_for_user()
 RETURNS TABLE (
     id UUID,
     sender_id UUID,
@@ -69,7 +138,7 @@ BEGIN
     FROM messages m
     JOIN profiles sender ON m.sender_id = sender.id
     JOIN profiles recipient ON m.recipient_id = recipient.id
-    WHERE m.sender_id = p_user_id OR m.recipient_id = p_user_id
+    WHERE m.sender_id = auth.uid() OR m.recipient_id = auth.uid()
     ORDER BY m.created_at DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
