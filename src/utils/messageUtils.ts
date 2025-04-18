@@ -44,31 +44,6 @@ export const fetchAvailableContacts = async (userId: string): Promise<Contact[]>
   return contacts || [];
 };
 
-export const fetchUserContacts = async (userId: string, userRole?: string): Promise<Contact[]> => {
-  try {
-    // Call the Edge Function to get contacts
-    const response = await fetch(`${process.env.SUPABASE_URL || 'https://nlvuzrthzkuymicgsapq.supabase.co'}/functions/v1/get-user-contacts`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-      },
-      body: JSON.stringify({ userId, userRole })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Edge function returned ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching user contacts:', error);
-    // Fallback to RPC function
-    return fetchAvailableContacts(userId);
-  }
-};
-
 export const sendMessage = async (
   senderId: string,
   recipientId: string,
