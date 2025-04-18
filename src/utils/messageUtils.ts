@@ -2,6 +2,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Message } from '@/components/messaging/MessageList';
 
+// Define interface for contacts
+export interface Contact {
+  id: string;
+  name: string;
+}
+
 /**
  * Fetches inbox messages for the current user
  */
@@ -61,28 +67,28 @@ const formatMessages = (messages: any[], type: 'inbox' | 'sent'): Message[] => {
 
   if (type === 'inbox') {
     return messages.map((msg: any) => ({
-      id: msg.id,
-      sender_id: msg.sender_id,
+      id: msg.id || '',
+      sender_id: msg.sender_id || '',
       sender_name: msg.sender_name || 'Unknown',
-      recipient_id: msg.recipient_id,
-      subject: msg.subject,
-      content: msg.content,
-      created_at: msg.created_at,
-      read: msg.read,
-      reply_to: msg.reply_to
+      recipient_id: msg.recipient_id || '',
+      subject: msg.subject || 'No Subject',
+      content: msg.content || '',
+      created_at: msg.created_at || new Date().toISOString(),
+      read: !!msg.read,
+      reply_to: msg.reply_to || undefined
     }));
   } else {
     return messages.map((msg: any) => ({
-      id: msg.id,
-      sender_id: msg.sender_id,
+      id: msg.id || '',
+      sender_id: msg.sender_id || '',
       sender_name: 'You',
-      recipient_id: msg.recipient_id,
+      recipient_id: msg.recipient_id || '',
       recipient_name: msg.recipient_name || 'Unknown',
-      subject: msg.subject,
-      content: msg.content,
-      created_at: msg.created_at,
-      read: msg.read,
-      reply_to: msg.reply_to
+      subject: msg.subject || 'No Subject',
+      content: msg.content || '',
+      created_at: msg.created_at || new Date().toISOString(),
+      read: !!msg.read,
+      reply_to: msg.reply_to || undefined
     }));
   }
 };
@@ -90,7 +96,7 @@ const formatMessages = (messages: any[], type: 'inbox' | 'sent'): Message[] => {
 /**
  * Fetches contacts based on user role
  */
-export const fetchUserContacts = async (userId: string, userRole: string): Promise<{id: string, name: string}[]> => {
+export const fetchUserContacts = async (userId: string, userRole: string): Promise<Contact[]> => {
   try {
     console.log("Fetching contacts with role:", userRole);
     
@@ -114,7 +120,7 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
     
     if (!data || !Array.isArray(data)) {
       console.warn('No contacts returned from Edge Function or invalid format');
-      throw new Error('Invalid data format from Edge Function');
+      return [];
     }
     
     const formattedContacts = formatContacts(data);
@@ -127,14 +133,14 @@ export const fetchUserContacts = async (userId: string, userRole: string): Promi
 };
 
 // Helper function to format contacts
-const formatContacts = (data: any): {id: string, name: string}[] => {
+const formatContacts = (data: any[]): Contact[] => {
   if (!data || !Array.isArray(data)) {
     console.warn("Invalid contacts data format:", data);
     return [];
   }
   
   return data.map(contact => ({
-    id: contact.id,
+    id: contact.id || '',
     name: contact.name || 'Unknown User'
   }));
 };

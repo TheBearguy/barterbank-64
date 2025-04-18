@@ -7,6 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface Contact {
+  id: string;
+  name: string;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -33,7 +38,7 @@ serve(async (req) => {
     // Logging request parameters
     console.log(`Fetching contacts for userId: ${userId}, userRole: ${userRole}`);
     
-    let data: { id: string, name: string }[] = [];
+    let contacts: Contact[] = [];
 
     // Get contacts based on user role
     if (userRole === 'borrower') {
@@ -47,27 +52,27 @@ serve(async (req) => {
           
         if (rpcError) {
           console.error("RPC error in lenders query:", rpcError);
-          // Fall back to direct query
-          const { data: directLenders, error: directError } = await supabaseClient
-            .from('profiles')
-            .select('id, name')
-            .eq('role', 'lender');
-            
-          if (directError) {
-            console.error("Direct query error in lenders query:", directError);
-            throw directError;
-          }
-          
-          data = directLenders || [];
+          throw rpcError;
+        }
+        
+        if (lenders && Array.isArray(lenders)) {
+          contacts = lenders;
+          console.log(`Found ${contacts.length} lenders`);
         } else {
-          data = lenders || [];
+          console.warn("No lenders found or invalid response format");
+          contacts = [];
         }
       } catch (error) {
         console.error("Error fetching lenders:", error);
-        throw error;
+        // Instead of re-throwing, we'll return empty array with error in response
+        return new Response(JSON.stringify({ 
+          error: error instanceof Error ? error.message : "Unknown error fetching lenders",
+          source: "get-user-contacts edge function" 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
       }
-      
-      console.log(`Found ${data.length} lenders`);
     } else if (userRole === 'lender') {
       // Lenders can message borrowers
       console.log("Fetching all borrowers for lender");
@@ -79,63 +84,63 @@ serve(async (req) => {
           
         if (rpcError) {
           console.error("RPC error in borrowers query:", rpcError);
-          // Fall back to direct query
-          const { data: directBorrowers, error: directError } = await supabaseClient
-            .from('profiles')
-            .select('id, name')
-            .eq('role', 'borrower');
-            
-          if (directError) {
-            console.error("Direct query error in borrowers query:", directError);
-            throw directError;
-          }
-          
-          data = directBorrowers || [];
+          throw rpcError;
+        }
+        
+        if (borrowers && Array.isArray(borrowers)) {
+          contacts = borrowers;
+          console.log(`Found ${contacts.length} borrowers`);
         } else {
-          data = borrowers || [];
+          console.warn("No borrowers found or invalid response format");
+          contacts = [];
         }
       } catch (error) {
         console.error("Error fetching borrowers:", error);
-        throw error;
+        // Return empty array with error in response
+        return new Response(JSON.stringify({ 
+          error: error instanceof Error ? error.message : "Unknown error fetching borrowers",
+          source: "get-user-contacts edge function" 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
       }
-      
-      console.log(`Found ${data.length} borrowers`);
     } else {
       // Fallback to all users for any other roles
       console.log("Using fallback method to get all users except current user");
       
       try {
-        // Try using RPC function first
+        // Try using RPC function
         const { data: allUsers, error: rpcError } = await supabaseClient
           .rpc('get_all_users_except', { exclude_id: userId });
           
         if (rpcError) {
           console.error("RPC error in all users query:", rpcError);
-          // Fall back to direct query
-          const { data: directUsers, error: directError } = await supabaseClient
-            .from('profiles')
-            .select('id, name')
-            .neq('id', userId);
-            
-          if (directError) {
-            console.error("Direct query error in all users query:", directError);
-            throw directError;
-          }
-          
-          data = directUsers || [];
+          throw rpcError;
+        }
+        
+        if (allUsers && Array.isArray(allUsers)) {
+          contacts = allUsers;
+          console.log(`Found ${contacts.length} general contacts`);
         } else {
-          data = allUsers || [];
+          console.warn("No general contacts found or invalid response format");
+          contacts = [];
         }
       } catch (error) {
         console.error("Error fetching all users:", error);
-        throw error;
+        // Return empty array with error in response
+        return new Response(JSON.stringify({ 
+          error: error instanceof Error ? error.message : "Unknown error fetching all users",
+          source: "get-user-contacts edge function" 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
       }
-      
-      console.log(`Found ${data.length} general contacts`);
     }
     
     // If no contacts found, return empty array
-    if (!data || data.length === 0) {
+    if (!contacts || contacts.length === 0) {
       console.log("No contacts found, returning empty array");
       return new Response(JSON.stringify([]), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -143,17 +148,17 @@ serve(async (req) => {
       });
     }
     
-    console.log("Returning contacts:", data);
+    console.log("Returning contacts:", contacts);
     
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify(contacts), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    console.error("Function error:", error.message);
+    console.error("Function error:", error instanceof Error ? error.message : "Unknown error");
     // Return empty array on error with error message in the body for debugging
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : "Unknown error",
       source: "get-user-contacts edge function" 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
