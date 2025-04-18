@@ -274,6 +274,100 @@ export type Database = {
           },
         ]
       }
+      product_categories: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_offers: {
+        Row: {
+          id: string
+          loan_id: string
+          borrower_id: string
+          category_id: string
+          title: string
+          description: string
+          specifications: string
+          age: string
+          amount: number
+          image_url: string | null
+          status: 'pending' | 'accepted' | 'rejected'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          loan_id: string
+          borrower_id: string
+          category_id: string
+          title: string
+          description: string
+          specifications: string
+          age: string
+          amount: number
+          image_url?: string | null
+          status?: 'pending' | 'accepted' | 'rejected'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          loan_id?: string
+          borrower_id?: string
+          category_id?: string
+          title?: string
+          description?: string
+          specifications?: string
+          age?: string
+          amount?: number
+          image_url?: string | null
+          status?: 'pending' | 'accepted' | 'rejected'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_offers_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_offers_borrower_id_fkey"
+            columns: ["borrower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_offers_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

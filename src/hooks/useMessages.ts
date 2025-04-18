@@ -1,4 +1,4 @@
-
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -19,22 +19,25 @@ export function useMessages() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshMessages = async () => {
-    if (!user) return;
+    if (!user) {
+      setError('User not authenticated');
+      setLoading(false);
+      return;
+    }
     
     try {
-      setLoading(true);
+      setIsRefreshing(true);
       setError(null);
-      console.log("Fetching messages...");
       
-      const fetchedMessages = await fetchMessages();
-      console.log("Messages fetched:", fetchedMessages.length);
+      const [fetchedMessages, fetchedContacts] = await Promise.all([
+        fetchMessages(),
+        fetchAvailableContacts(user.id)
+      ]);
+      
       setMessages(fetchedMessages);
-      
-      console.log("Fetching contacts for user:", user.id);
-      const fetchedContacts = await fetchAvailableContacts(user.id);
-      console.log("Contacts fetched:", fetchedContacts.length);
       setContacts(fetchedContacts);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -47,6 +50,7 @@ export function useMessages() {
       });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -57,12 +61,22 @@ export function useMessages() {
   }, [user]);
 
   const sendMessage = async (subject: string, content: string, recipientId: string, replyToId?: string) => {
-    if (!user) return false;
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to send messages",
+        variant: "destructive"
+      });
+      return false;
+    }
     
     try {
-      console.log("Sending message to recipient:", recipientId);
       await sendMessageUtil(user.id, recipientId, subject, content, replyToId);
-      refreshMessages();
+      await refreshMessages();
+      toast({
+        title: "Success",
+        description: "Message sent successfully",
+      });
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -127,6 +141,7 @@ export function useMessages() {
     contacts,
     loading,
     error,
+    isRefreshing,
     sendMessage,
     markAsRead,
     deleteMessage,

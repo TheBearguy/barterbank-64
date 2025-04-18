@@ -1,10 +1,12 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Contact {
   id: string;
   name: string;
   role: string;
+  email?: string;
+  avatar_url?: string;
+  last_active?: string;
 }
 
 export interface Message {
@@ -18,32 +20,46 @@ export interface Message {
   created_at: string;
   read: boolean;
   reply_to?: string;
+  sender_avatar?: string;
+  recipient_avatar?: string;
 }
 
 export const fetchMessages = async (): Promise<Message[]> => {
-  // Use typed parameters for the RPC call
-  const { data: messages, error } = await supabase
-    .rpc('get_messages_for_user', {});
-    
-  if (error) {
-    console.error('Error fetching messages:', error);
-    throw error;
-  }
+  try {
+    const { data: messages, error } = await supabase
+      .rpc('get_messages_for_user', {})
+      .throwOnError();
+      
+    if (!messages) {
+      throw new Error('No messages returned from the server');
+    }
 
-  return messages || [];
+    return messages;
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to fetch messages');
+  }
 };
 
 export const fetchAvailableContacts = async (userId: string): Promise<Contact[]> => {
-  // Use typed parameters for the RPC call
-  const { data: contacts, error } = await supabase
-    .rpc('get_available_contacts', { p_user_id: userId });
-    
-  if (error) {
-    console.error('Error fetching contacts:', error);
-    throw error;
-  }
+  try {
+    if (!userId) {
+      throw new Error('User ID is required to fetch contacts');
+    }
 
-  return contacts || [];
+    const { data: contacts, error } = await supabase
+      .rpc('get_available_contacts', { p_user_id: userId })
+      .throwOnError();
+      
+    if (!contacts) {
+      throw new Error('No contacts returned from the server');
+    }
+
+    return contacts;
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to fetch contacts');
+  }
 };
 
 export const sendMessage = async (

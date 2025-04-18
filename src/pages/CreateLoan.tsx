@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +12,8 @@ import { Plus, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ProductOfferForm from '@/components/loans/ProductOfferForm';
 
 const CreateLoan = () => {
   const { isAuthenticated, user } = useAuth();
@@ -24,6 +25,7 @@ const CreateLoan = () => {
   const [services, setServices] = useState<string[]>([]);
   const [currentService, setCurrentService] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('services');
 
   // Redirect if not logged in
   if (!isAuthenticated) {
@@ -150,84 +152,128 @@ const CreateLoan = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Loan Amount (₹)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="Enter amount in rupees"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Explain why you need this loan and how you plan to use it"
-                    rows={4}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Services or Products You Can Offer</Label>
-                  <div className="flex">
-                    <Input
-                      value={currentService}
-                      onChange={(e) => setCurrentService(e.target.value)}
-                      placeholder="e.g., Web Development, Home Cooking, Tutoring..."
-                      className="flex-grow"
-                    />
-                    <Button 
-                      type="button" 
-                      onClick={handleAddService} 
-                      className="ml-2" 
-                      variant="outline"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {services.map((service, index) => (
-                      <div 
-                        key={index} 
-                        className="flex items-center rounded-full bg-blue-100 text-blue-800 px-3 py-1 text-sm"
-                      >
-                        <span>{service}</span>
-                        <button 
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="services">Services Repayment</TabsTrigger>
+                  <TabsTrigger value="product">Product Repayment</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="services">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Loan Amount (₹)</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="Enter amount in rupees"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Explain why you need this loan and how you plan to use it"
+                        rows={4}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Services You Can Offer</Label>
+                      <div className="flex">
+                        <Input
+                          value={currentService}
+                          onChange={(e) => setCurrentService(e.target.value)}
+                          placeholder="e.g., Web Development, Home Cooking, Tutoring..."
+                          className="flex-grow"
+                        />
+                        <Button 
                           type="button" 
-                          onClick={() => handleRemoveService(service)} 
-                          className="ml-2 text-blue-600 hover:text-blue-800"
+                          onClick={handleAddService} 
+                          className="ml-2" 
+                          variant="outline"
                         >
-                          <X className="h-3 w-3" />
-                        </button>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </Button>
                       </div>
-                    ))}
-                    {services.length === 0 && (
-                      <p className="text-sm text-gray-500">
-                        Add the services or products you can provide as partial or full repayment
-                      </p>
-                    )}
+                      
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {services.map((service, index) => (
+                          <div 
+                            key={index} 
+                            className="flex items-center rounded-full bg-blue-100 text-blue-800 px-3 py-1 text-sm"
+                          >
+                            <span>{service}</span>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveService(service)} 
+                              className="ml-2 text-blue-600 hover:text-blue-800"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {services.length === 0 && (
+                          <p className="text-sm text-gray-500">
+                            Add the services you can provide as partial or full repayment
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="pt-4 flex justify-end space-x-4">
+                      <Button variant="outline" type="button" onClick={() => navigate('/dashboard')}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={loading} className="button-shine">
+                        {loading ? 'Creating...' : 'Create Loan Request'}
+                      </Button>
+                    </div>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="product">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Loan Amount (₹)</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="Enter amount in rupees"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Explain why you need this loan and how you plan to use it"
+                        rows={4}
+                        required
+                      />
+                    </div>
+
+                    <ProductOfferForm
+                      loanId="new"
+                      onSuccess={() => {
+                        navigate('/dashboard');
+                      }}
+                    />
                   </div>
-                </div>
-                
-                <div className="pt-4 flex justify-end space-x-4">
-                  <Button variant="outline" type="button" onClick={() => navigate('/dashboard')}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={loading} className="button-shine">
-                    {loading ? 'Creating...' : 'Create Loan Request'}
-                  </Button>
-                </div>
-              </form>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>

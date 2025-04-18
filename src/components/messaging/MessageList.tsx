@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Mail, MailOpen } from 'lucide-react';
+import { Mail, MailOpen, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface Message {
@@ -14,15 +13,31 @@ export interface Message {
   created_at: string;
   read: boolean;
   reply_to?: string;
+  sender_avatar?: string;
+  recipient_avatar?: string;
 }
 
 interface MessageListProps {
   messages: Message[];
   onMessageSelect: (message: Message) => void;
   selectedMessageId?: string;
+  isLoading?: boolean;
 }
 
-const MessageList = ({ messages, onMessageSelect, selectedMessageId }: MessageListProps) => {
+const MessageList = ({ 
+  messages, 
+  onMessageSelect, 
+  selectedMessageId,
+  isLoading = false 
+}: MessageListProps) => {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!messages.length) {
     return (
       <div className="p-8 text-center">

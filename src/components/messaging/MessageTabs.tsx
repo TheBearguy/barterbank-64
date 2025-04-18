@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Inbox, Send, PenSquare } from 'lucide-react';
+import { Inbox, Send, PenSquare, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMessages } from '@/hooks/useMessages';
 import { Message } from '@/components/messaging/MessageList';
@@ -9,6 +8,7 @@ import MessageDetail from '@/components/messaging/MessageDetail';
 import ComposeMessage from '@/components/messaging/ComposeMessage';
 import MessageEmptyState from '@/components/messaging/MessageEmptyState';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface MessageTabsProps {
   selectedTab: string;
@@ -29,6 +29,9 @@ const MessageTabs = ({
     inboxMessages, 
     sentMessages, 
     contacts,
+    loading,
+    error,
+    isRefreshing,
     sendMessage, 
     markAsRead, 
     deleteMessage 
@@ -111,6 +114,22 @@ const MessageTabs = ({
   
   const currentMessages = selectedTab === 'inbox' ? inboxMessages : sentMessages;
   
+  if (loading && !isRefreshing) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+  
   return (
     <div className="space-y-6">
       <Tabs defaultValue="inbox" value={selectedTab} onValueChange={onTabChange}>
@@ -138,6 +157,7 @@ const MessageTabs = ({
               messages={currentMessages} 
               onMessageSelect={handleMessageSelect}
               selectedMessageId={selectedMessage?.id}
+              isLoading={isRefreshing}
             />
           </div>
         </div>
