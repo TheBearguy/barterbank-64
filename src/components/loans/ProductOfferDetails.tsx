@@ -9,6 +9,7 @@ import { IndianRupee } from 'lucide-react';
 import CounterOffersList from './CounterOffersList';
 import CounterOfferForm from './CounterOfferForm';
 import { useAuth } from '@/context/AuthContext';
+import { Badge } from '@/components/ui/badge';
 
 interface ProductOffer {
     id: string;
@@ -24,6 +25,20 @@ interface ProductOffer {
     category: {
         name: string;
     };
+    counter_offers: {
+        id: string;
+        amount: number;
+        message: string | null;
+        status: 'pending' | 'accepted' | 'rejected';
+        created_at: string;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+            role: string;
+            avatar: string | null;
+        };
+    }[];
 }
 
 interface ProductOfferDetailsProps {
@@ -102,11 +117,34 @@ const ProductOfferDetails = ({ productOffer, onCounterOffer }: ProductOfferDetai
                         </div>
                     )}
 
-                    <CounterOffersList
-                        productOfferId={productOffer.id}
-                        currentUserId={user?.id || ''}
-                        isBorrower={user?.id === productOffer.borrower_id}
-                    />
+                    {/* Counter Offers */}
+                    {productOffer.counter_offers && productOffer.counter_offers.length > 0 && (
+                        <div className="mt-6">
+                            <h3 className="text-lg font-medium mb-4">Counter Offers</h3>
+                            <div className="space-y-4">
+                                {productOffer.counter_offers.map((counter) => (
+                                    <div key={counter.id} className="bg-gray-50 p-4 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <p className="font-medium">{counter.user.name}</p>
+                                            <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                                                Counter Offer
+                                            </Badge>
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            Made {format(new Date(counter.created_at), 'PPP p')}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <IndianRupee className="h-4 w-4" />
+                                            <span className="font-medium">{counter.amount}</span>
+                                        </div>
+                                        {counter.message && (
+                                            <p className="mt-2 text-sm text-gray-600">{counter.message}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

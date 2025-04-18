@@ -759,90 +759,55 @@ const LoanDetails = () => {
                   <CardDescription>History of this loan request</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <ol className="relative border-l border-gray-200 dark:border-gray-700">
-                    <li className="mb-6 ml-4">
-                      <div className="absolute w-3 h-3 bg-primary rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
-                      <time className="mb-1 text-sm font-normal leading-none text-gray-500">
-                        {new Date(loan.created_at).toLocaleDateString()}
-                      </time>
-                      <p className="text-base font-normal text-gray-700 dark:text-gray-300">
-                        Loan request created
-                      </p>
-                    </li>
-                    
-                    {offers.length > 0 && offers.map((offer, index) => (
-                      <li className="mb-6 ml-4" key={offer.id}>
-                        <div className="absolute w-3 h-3 bg-blue-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
-                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">
-                          {new Date(offer.created_at).toLocaleDateString()}
-                        </time>
-                        <p className="text-base font-normal text-gray-700 dark:text-gray-300">
-                          {offer.status === 'accepted' 
-                            ? `Offer accepted from ${offer.lender?.name || 'a lender'}`
-                            : offer.status === 'counter'
-                            ? `Counter offer from ${offer.lender?.name || 'a lender'}`
-                            : `New offer received from ${offer.lender?.name || 'a lender'}`}
-                        </p>
-                        {offer.message && (
-                          <p className="text-sm text-gray-500 mt-1 italic">
-                            "{offer.message}"
-                          </p>
-                        )}
-                        {offer.borrower_note && (
-                          <p className="text-sm text-gray-500 mt-1 italic">
-                            Borrower's note: "{offer.borrower_note}"
-                          </p>
-                        )}
-                        {offer.counter_offers && offer.counter_offers.length > 0 && (
-                          <div className="mt-2 pl-4 border-l-2 border-gray-200">
-                            {offer.counter_offers.map((counter: any) => (
-                              <div key={counter.id} className="mb-2">
-                                <p className="text-sm text-gray-600">
-                                  Counter offer from {counter.user?.name || 'a user'}:
-                                </p>
-                                <p className="text-sm text-gray-500 mt-1 italic">
-                                  "{counter.message}"
-                                </p>
-                                <p className="text-xs text-gray-400">
-                                  Amount: ₹{counter.amount}
-                                </p>
-                              </div>
-                            ))}
+                  <div className="space-y-4">
+                    {offers.map((offer) => (
+                      <div key={offer.id} className="flex items-start gap-4">
+                        <div className="flex-shrink-0">
+                          {offer.status === 'accepted' ? (
+                            <CheckCircle2 className="h-6 w-6 text-green-500" />
+                          ) : offer.status === 'counter' ? (
+                            <RefreshCw className="h-6 w-6 text-yellow-500" />
+                          ) : (
+                            <AlertCircle className="h-6 w-6 text-gray-400" />
+                          )}
+                        </div>
+                        <div className="flex-grow">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium">{offer.lender?.name || 'Unknown Lender'}</p>
+                            <Badge variant="outline" className={`${
+                              offer.status === 'accepted' ? 'bg-green-100 text-green-800' : 
+                              offer.status === 'counter' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {offer.status}
+                            </Badge>
                           </div>
-                        )}
-                      </li>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Offered {new Date(offer.created_at).toLocaleDateString()}
+                          </p>
+                          <p className="mt-2">{offer.message}</p>
+                          {offer.status === 'counter' && offer.counter_offers && offer.counter_offers.length > 0 && (
+                            <div className="mt-4 space-y-4">
+                              {offer.counter_offers.map((counter: any) => (
+                                <div key={counter.id} className="bg-gray-50 p-4 rounded-lg">
+                                  <div className="flex items-center justify-between">
+                                    <p className="font-medium">{counter.user?.name || 'Unknown User'}</p>
+                                    <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                                      Counter Offer
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    Made {new Date(counter.created_at).toLocaleDateString()}
+                                  </p>
+                                  <p className="mt-2">{counter.message}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ))}
-                    
-                    {loan.status === 'active' && (
-                      <li className="mb-6 ml-4">
-                        <div className="absolute w-3 h-3 bg-green-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
-                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">
-                          {new Date(loan.updated_at).toLocaleDateString()}
-                        </time>
-                        <p className="text-base font-normal text-gray-700 dark:text-gray-300">
-                          Loan funded and active
-                        </p>
-                      </li>
-                    )}
-                    
-                    {acceptedOffer && acceptedOffer.repayment_status && acceptedOffer.repayment_status !== 'pending' && (
-                      <li className="mb-6 ml-4">
-                        <div className="absolute w-3 h-3 bg-purple-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-900"></div>
-                        <time className="mb-1 text-sm font-normal leading-none text-gray-500">
-                          {new Date().toLocaleDateString()}
-                        </time>
-                        <p className="text-base font-normal text-gray-700 dark:text-gray-300">
-                          {acceptedOffer.repayment_status === 'proposed'
-                            ? 'Borrower proposed repayment terms'
-                            : acceptedOffer.repayment_status === 'counter'
-                            ? 'Lender made a counter proposal'
-                            : acceptedOffer.repayment_status === 'accepted'
-                            ? 'Repayment terms accepted'
-                            : 'Repayment terms rejected'}
-                        </p>
-                      </li>
-                    )}
-                  </ol>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -892,14 +857,76 @@ const LoanDetails = () => {
               <h2 className="text-2xl font-bold mb-4">Product Offers</h2>
               <div className="space-y-6">
                 {productOffers.map((offer) => (
-                  <ProductOfferDetails
-                    key={offer.id}
-                    productOffer={offer}
-                    onCounterOffer={() => {
-                      setSelectedProductOffer(offer);
-                      setIsCounterOfferDialogOpen(true);
-                    }}
-                  />
+                  <Card key={offer.id} className="p-6">
+                    <CardHeader>
+                      <CardTitle>{offer.title}</CardTitle>
+                      <CardDescription>
+                        Category: {offer.category.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Description</p>
+                          <p>{offer.description}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Specifications</p>
+                          <p>{offer.specifications}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Age</p>
+                          <p>{offer.age}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Amount</p>
+                          <div className="flex items-center gap-1">
+                            <IndianRupee className="h-4 w-4" />
+                            <span>{offer.amount}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {offer.counter_offers && offer.counter_offers.length > 0 && (
+                        <div className="mt-6">
+                          <h3 className="text-lg font-medium mb-4">Counter Offers</h3>
+                          <div className="space-y-4">
+                            {offer.counter_offers.map((counter) => (
+                              <div key={counter.id} className="bg-gray-50 p-4 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <p className="font-medium">{counter.user.name}</p>
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                                    Counter Offer
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-gray-500 mt-1">
+                                  Made {new Date(counter.created_at).toLocaleDateString()}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <IndianRupee className="h-4 w-4" />
+                                  <span className="font-medium">{counter.amount}</span>
+                                </div>
+                                {counter.message && (
+                                  <p className="mt-2 text-sm text-gray-600">{counter.message}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {offer.status === 'pending' && !isBorrower && (
+                        <div className="mt-6">
+                          <Button
+                            onClick={() => handleOpenCounterOffer(offer)}
+                            className="w-full"
+                          >
+                            Make Counter Offer
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>
