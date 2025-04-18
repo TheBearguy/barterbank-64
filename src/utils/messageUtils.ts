@@ -47,11 +47,11 @@ export const fetchAvailableContacts = async (userId: string): Promise<Contact[]>
 export const fetchUserContacts = async (userId: string, userRole?: string): Promise<Contact[]> => {
   try {
     // Call the Edge Function to get contacts
-    const response = await fetch(`${supabase.supabaseUrl}/functions/v1/get-user-contacts`, {
+    const response = await fetch(`${process.env.SUPABASE_URL || 'https://nlvuzrthzkuymicgsapq.supabase.co'}/functions/v1/get-user-contacts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabase.auth.getSession().then(({ data }) => data.session?.access_token)}`
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
       },
       body: JSON.stringify({ userId, userRole })
     });

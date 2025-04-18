@@ -1,9 +1,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { fetchAvailableContacts, fetchUserContacts, Contact } from '@/utils/messageUtils';
+import { fetchAvailableContacts, Contact } from '@/utils/messageUtils';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 export function useContacts() {
   const { user } = useAuth();
@@ -23,36 +22,14 @@ export function useContacts() {
       const userRole = user.user_metadata?.role || '';
       console.log("Loading contacts with user role:", userRole);
       
-      // Try to fetch contacts using Edge Function first
-      try {
-        const contactsData = await fetchUserContacts(user.id, userRole);
-        
-        if (contactsData && contactsData.length > 0) {
-          console.log("Contacts loaded successfully via Edge Function:", contactsData);
-          setContacts(contactsData);
-          return;
-        } else {
-          console.warn("No contacts found via Edge Function, trying RPC function");
-        }
-      } catch (edgeFunctionError) {
-        console.error("Edge Function error, trying alternatives:", edgeFunctionError);
-      }
-        
-      // Fallback to RPC function
-      try {
-        console.log("Trying get_available_contacts RPC function");
-        const contacts = await fetchAvailableContacts(user.id);
-        
-        if (contacts && contacts.length > 0) {
-          console.log("Loaded contacts via RPC function:", contacts.length);
-          setContacts(contacts);
-          return;
-        } else {
-          console.warn("No contacts found via RPC, using empty contacts list");
-          setContacts([]);
-        }
-      } catch (rpcError) {
-        console.error("RPC function failed:", rpcError);
+      // Use the RPC function to get contacts based on role
+      const contactsData = await fetchAvailableContacts(user.id);
+      
+      if (contactsData && contactsData.length > 0) {
+        console.log("Contacts loaded successfully:", contactsData);
+        setContacts(contactsData);
+      } else {
+        console.warn("No contacts found, using empty contacts list");
         setContacts([]);
       }
     } catch (err) {
