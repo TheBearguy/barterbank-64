@@ -155,10 +155,11 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("Function error:", error instanceof Error ? error.message : "Unknown error");
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("Function error:", errorMessage);
     // Return empty array on error with error message in the body for debugging
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: errorMessage,
       source: "get-user-contacts edge function" 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

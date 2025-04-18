@@ -129,8 +129,9 @@ export function useMessages() {
         }
         
       } catch (err) {
-        console.error('Error fetching messages:', err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+        console.error('Error fetching messages:', errorMessage);
+        setError(errorMessage);
         toast({
           title: "Error",
           description: "Failed to load messages. Please try again.",
@@ -249,7 +250,8 @@ export function useMessages() {
         }
       }
     } catch (error) {
-      console.error("Error in markAsRead:", error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error("Error in markAsRead:", errorMessage);
       toast({
         title: "Error",
         description: "Failed to mark message as read.",
@@ -312,7 +314,8 @@ export function useMessages() {
         }
       }
     } catch (error) {
-      console.error("Error in deleteMessage:", error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error("Error in deleteMessage:", errorMessage);
       toast({
         title: "Error",
         description: "Failed to delete message. Please try again.",

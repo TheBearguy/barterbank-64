@@ -137,8 +137,9 @@ export function useContacts() {
         }
       }
     } catch (err) {
-      console.error('Error loading contacts:', err);
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      console.error('Error loading contacts:', errorMessage);
+      setError(errorMessage);
       setContacts([]);
       
       toast({
