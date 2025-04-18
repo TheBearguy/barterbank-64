@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,6 +9,8 @@ import NegotiationDialog from '@/components/loans/NegotiationDialog';
 import RatingDialog from '@/components/loans/RatingDialog';
 import RepaymentDialog from '@/components/loans/RepaymentDialog';
 import RepaymentResponseDialog from '@/components/loans/RepaymentResponseDialog';
+import CounterOffersList from '@/components/loans/CounterOffersList';
+import CounterOfferForm from '@/components/loans/CounterOfferForm';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Card,
@@ -47,6 +48,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLoansData } from '@/hooks/useLoansData';
+import ProductOfferDetails from '@/components/loans/ProductOfferDetails';
 
 const LoanDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -69,6 +71,9 @@ const LoanDetails = () => {
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [offerAccepted, setOfferAccepted] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [productOffers, setProductOffers] = useState<any[]>([]);
+  const [selectedProductOffer, setSelectedProductOffer] = useState<any>(null);
+  const [isCounterOfferDialogOpen, setIsCounterOfferDialogOpen] = useState(false);
   
   if (!id) {
     navigate('/loans');
@@ -106,7 +111,27 @@ const LoanDetails = () => {
           
         if (offersError) throw offersError;
         
-        setOffers(offersData || []);
+        // Fetch product offers with their counter offers
+        const { data: productOffersData, error: productOffersError } = await supabase
+          .from('product_offers')
+          .select(`
+            *,
+            borrower:profiles!borrower_id(id, name, email, role, avatar),
+            category:product_categories(name),
+            counter_offers!product_offer_id(
+              id,
+              amount,
+              message,
+              status,
+              created_at,
+              user:profiles!counter_offers_user_id_fkey(id, name, email, role, avatar)
+            )
+          `)
+          .eq('loan_id', id)
+          .order('created_at', { ascending: false });
+
+        if (productOffersError) throw productOffersError;
+        setProductOffers(productOffersData || []);
         
         // If the user is logged in, check for their offers
         if (user) {
@@ -132,6 +157,8 @@ const LoanDetails = () => {
             setOfferSubmitted(true);
           }
         }
+        
+        setOffers(offersData || []);
       } catch (error) {
         console.error('Error fetching loan details:', error);
         toast({
@@ -367,6 +394,63 @@ const LoanDetails = () => {
   
   // Check if the current user is the lender
   const isLender = user && acceptedOffer && user.id === acceptedOffer.lender_id;
+
+  const handleOpenCounterOffer = (productOffer: any) => {
+    setSelectedProductOffer(productOffer);
+    setIsCounterOfferDialogOpen(true);
+  };
+
+  const handleCloseCounterOffer = () => {
+    setSelectedProductOffer(null);
+    setIsCounterOfferDialogOpen(false);
+  };
+
+  const handleCounterOfferSubmit = async (amount: number, message?: string) => {
+    try {
+      if (!selectedProductOffer || !user) return;
+
+      const { error } = await supabase
+        .from('counter_offers')
+        .insert({
+          product_offer_id: selectedProductOffer.id,
+          user_id: user.id,
+          amount,
+          message,
+          status: 'pending',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Counter offer submitted successfully",
+      });
+
+      setIsCounterOfferDialogOpen(false);
+      setSelectedProductOffer(null);
+
+      // Refresh product offers to show the new counter offer
+      const { data: productOffersData, error: productOffersError } = await supabase
+        .from('product_offers')
+        .select(`
+          *,
+          borrower:profiles!borrower_id(id, name, email, role, avatar),
+          category:product_categories(name)
+        `)
+        .eq('loan_id', id)
+        .order('created_at', { ascending: false });
+
+      if (productOffersError) throw productOffersError;
+      setProductOffers(productOffersData || []);
+    } catch (error) {
+      console.error('Error submitting counter offer:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit counter offer",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -695,8 +779,37 @@ const LoanDetails = () => {
                         <p className="text-base font-normal text-gray-700 dark:text-gray-300">
                           {offer.status === 'accepted' 
                             ? `Offer accepted from ${offer.lender?.name || 'a lender'}`
+                            : offer.status === 'counter'
+                            ? `Counter offer from ${offer.lender?.name || 'a lender'}`
                             : `New offer received from ${offer.lender?.name || 'a lender'}`}
                         </p>
+                        {offer.message && (
+                          <p className="text-sm text-gray-500 mt-1 italic">
+                            "{offer.message}"
+                          </p>
+                        )}
+                        {offer.borrower_note && (
+                          <p className="text-sm text-gray-500 mt-1 italic">
+                            Borrower's note: "{offer.borrower_note}"
+                          </p>
+                        )}
+                        {offer.counter_offers && offer.counter_offers.length > 0 && (
+                          <div className="mt-2 pl-4 border-l-2 border-gray-200">
+                            {offer.counter_offers.map((counter: any) => (
+                              <div key={counter.id} className="mb-2">
+                                <p className="text-sm text-gray-600">
+                                  Counter offer from {counter.user?.name || 'a user'}:
+                                </p>
+                                <p className="text-sm text-gray-500 mt-1 italic">
+                                  "{counter.message}"
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  Amount: ₹{counter.amount}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </li>
                     ))}
                     
@@ -772,6 +885,25 @@ const LoanDetails = () => {
               )}
             </div>
           </div>
+
+          {/* Product Offers Section */}
+          {productOffers.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold mb-4">Product Offers</h2>
+              <div className="space-y-6">
+                {productOffers.map((offer) => (
+                  <ProductOfferDetails
+                    key={offer.id}
+                    productOffer={offer}
+                    onCounterOffer={() => {
+                      setSelectedProductOffer(offer);
+                      setIsCounterOfferDialogOpen(true);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <Footer />
@@ -837,6 +969,41 @@ const LoanDetails = () => {
           offer={selectedOffer}
           onResponseSent={handleRepaymentResponseSent}
         />
+      )}
+
+      {/* Counter Offer Dialog */}
+      {isCounterOfferDialogOpen && selectedProductOffer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg">
+            <CardHeader>
+              <CardTitle>Make Counter Offer</CardTitle>
+              <CardDescription>
+                Counter offer for {selectedProductOffer.title}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CounterOfferForm
+                productOfferId={selectedProductOffer.id}
+                currentUserId={user?.id || ''}
+                onSuccess={() => {
+                  setIsCounterOfferDialogOpen(false);
+                  setSelectedProductOffer(null);
+                }}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCounterOfferDialogOpen(false);
+                  setSelectedProductOffer(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       )}
     </div>
   );

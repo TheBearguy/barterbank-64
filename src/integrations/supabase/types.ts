@@ -368,6 +368,54 @@ export type Database = {
           }
         ]
       }
+      counter_offers: {
+        Row: {
+          id: string
+          product_offer_id: string
+          user_id: string
+          amount: number
+          message: string | null
+          status: 'pending' | 'accepted' | 'rejected'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_offer_id: string
+          user_id: string
+          amount: number
+          message?: string | null
+          status?: 'pending' | 'accepted' | 'rejected'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_offer_id?: string
+          user_id?: string
+          amount?: number
+          message?: string | null
+          status?: 'pending' | 'accepted' | 'rejected'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_offers_product_offer_id_fkey"
+            columns: ["product_offer_id"]
+            isOneToOne: false
+            referencedRelation: "product_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_offers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
