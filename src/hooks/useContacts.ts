@@ -42,41 +42,58 @@ export function useContacts() {
             throw rpcError;
           }
           
-          if (rpcContacts && rpcContacts.length > 0) {
+          if (rpcContacts && Array.isArray(rpcContacts) && rpcContacts.length > 0) {
             console.log("Loaded contacts via RPC function:", rpcContacts.length);
             setContacts(rpcContacts);
           } else {
-            console.warn("No contacts found via RPC, trying direct query");
+            console.warn("No contacts found via RPC, trying role-based filtering");
             
-            // Fallback: Direct query based on role
-            let queryBuilder = supabase.from('profiles').select('id, name');
-            
+            // Fallback: Use profiles based on role
             if (userRole === 'borrower') {
-              queryBuilder = queryBuilder.eq('role', 'lender');
+              const { data: lenders, error: lendersError } = await supabase
+                .rpc('get_all_lenders');
+                
+              if (lendersError) {
+                console.error("Lenders query error:", lendersError);
+                throw lendersError;
+              }
+              
+              if (lenders && Array.isArray(lenders) && lenders.length > 0) {
+                console.log("Loaded lender contacts:", lenders.length);
+                setContacts(lenders);
+              } else {
+                setContacts([]);
+              }
             } else if (userRole === 'lender') {
-              queryBuilder = queryBuilder.eq('role', 'borrower');
+              const { data: borrowers, error: borrowersError } = await supabase
+                .rpc('get_all_borrowers');
+                
+              if (borrowersError) {
+                console.error("Borrowers query error:", borrowersError);
+                throw borrowersError;
+              }
+              
+              if (borrowers && Array.isArray(borrowers) && borrowers.length > 0) {
+                console.log("Loaded borrower contacts:", borrowers.length);
+                setContacts(borrowers);
+              } else {
+                setContacts([]);
+              }
             } else {
-              queryBuilder = queryBuilder.neq('id', user.id);
-            }
-            
-            const { data: profiles, error: profilesError } = await queryBuilder;
-            
-            if (profilesError) {
-              console.error("Direct query fallback error:", profilesError);
-              throw profilesError;
-            }
-            
-            if (profiles && profiles.length > 0) {
-              console.log("Loaded contacts via direct query fallback:", profiles.length);
-              setContacts(profiles);
-            } else {
-              console.warn("No contacts found with any method");
-              setContacts([]);
-              toast({
-                title: "No contacts found",
-                description: "There are no contacts available for your account at this time.",
-                variant: "default"
-              });
+              const { data: allUsers, error: allUsersError } = await supabase
+                .rpc('get_all_users_except', { exclude_id: user.id });
+                
+              if (allUsersError) {
+                console.error("All users query error:", allUsersError);
+                throw allUsersError;
+              }
+              
+              if (allUsers && Array.isArray(allUsers) && allUsers.length > 0) {
+                console.log("Loaded all users as contacts:", allUsers.length);
+                setContacts(allUsers);
+              } else {
+                setContacts([]);
+              }
             }
           }
         }
@@ -93,44 +110,61 @@ export function useContacts() {
             throw rpcError;
           }
           
-          if (rpcContacts && rpcContacts.length > 0) {
+          if (rpcContacts && Array.isArray(rpcContacts) && rpcContacts.length > 0) {
             console.log("Loaded contacts via RPC function after Edge Function error:", rpcContacts.length);
             setContacts(rpcContacts);
             return;
           }
         } catch (rpcError) {
-          console.error("RPC function failed too, trying direct query:", rpcError);
+          console.error("RPC function failed too, trying role-based filtering:", rpcError);
         }
         
-        // Fallback: Direct query based on role
-        let queryBuilder = supabase.from('profiles').select('id, name');
-        
+        // Fallback: Use profiles based on role
         if (userRole === 'borrower') {
-          queryBuilder = queryBuilder.eq('role', 'lender');
+          const { data: lenders, error: lendersError } = await supabase
+            .rpc('get_all_lenders');
+            
+          if (lendersError) {
+            console.error("Lenders query error:", lendersError);
+            throw lendersError;
+          }
+          
+          if (lenders && Array.isArray(lenders) && lenders.length > 0) {
+            console.log("Loaded lender contacts after failures:", lenders.length);
+            setContacts(lenders);
+          } else {
+            setContacts([]);
+          }
         } else if (userRole === 'lender') {
-          queryBuilder = queryBuilder.eq('role', 'borrower');
+          const { data: borrowers, error: borrowersError } = await supabase
+            .rpc('get_all_borrowers');
+            
+          if (borrowersError) {
+            console.error("Borrowers query error:", borrowersError);
+            throw borrowersError;
+          }
+          
+          if (borrowers && Array.isArray(borrowers) && borrowers.length > 0) {
+            console.log("Loaded borrower contacts after failures:", borrowers.length);
+            setContacts(borrowers);
+          } else {
+            setContacts([]);
+          }
         } else {
-          queryBuilder = queryBuilder.neq('id', user.id);
-        }
-        
-        const { data: profiles, error: profilesError } = await queryBuilder;
-        
-        if (profilesError) {
-          console.error("Direct query fallback error:", profilesError);
-          throw profilesError;
-        }
-        
-        if (profiles && profiles.length > 0) {
-          console.log("Loaded contacts via direct query fallback after Edge Function error:", profiles.length);
-          setContacts(profiles);
-        } else {
-          console.warn("No contacts found with any method");
-          setContacts([]);
-          toast({
-            title: "No contacts found",
-            description: "There are no contacts available for your account at this time.",
-            variant: "default"
-          });
+          const { data: allUsers, error: allUsersError } = await supabase
+            .rpc('get_all_users_except', { exclude_id: user.id });
+            
+          if (allUsersError) {
+            console.error("All users query error:", allUsersError);
+            throw allUsersError;
+          }
+          
+          if (allUsers && Array.isArray(allUsers) && allUsers.length > 0) {
+            console.log("Loaded all users as contacts after failures:", allUsers.length);
+            setContacts(allUsers);
+          } else {
+            setContacts([]);
+          }
         }
       }
     } catch (err) {

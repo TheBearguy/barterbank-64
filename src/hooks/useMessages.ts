@@ -55,7 +55,7 @@ export function useMessages() {
               throw inboxQueryError;
             }
             
-            if (inboxData && inboxData.length > 0) {
+            if (inboxData && Array.isArray(inboxData) && inboxData.length > 0) {
               console.log(`Found ${inboxData.length} inbox messages via RPC function`);
               
               // Format the data
@@ -100,7 +100,7 @@ export function useMessages() {
               throw sentQueryError;
             }
             
-            if (sentData && sentData.length > 0) {
+            if (sentData && Array.isArray(sentData) && sentData.length > 0) {
               console.log(`Found ${sentData.length} sent messages via RPC function`);
               
               // Format the data

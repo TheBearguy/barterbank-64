@@ -40,48 +40,97 @@ serve(async (req) => {
       // Borrowers can message lenders
       console.log("Fetching all lenders for borrower");
       
-      const { data: lenders, error: lendersError } = await supabaseClient
-        .from('profiles')
-        .select('id, name')
-        .eq('role', 'lender');
-        
-      if (lendersError) {
-        console.error("Error in lenders query:", lendersError);
-        throw lendersError;
+      try {
+        // Try using RPC function first
+        const { data: lenders, error: rpcError } = await supabaseClient
+          .rpc('get_all_lenders');
+          
+        if (rpcError) {
+          console.error("RPC error in lenders query:", rpcError);
+          // Fall back to direct query
+          const { data: directLenders, error: directError } = await supabaseClient
+            .from('profiles')
+            .select('id, name')
+            .eq('role', 'lender');
+            
+          if (directError) {
+            console.error("Direct query error in lenders query:", directError);
+            throw directError;
+          }
+          
+          data = directLenders || [];
+        } else {
+          data = lenders || [];
+        }
+      } catch (error) {
+        console.error("Error fetching lenders:", error);
+        throw error;
       }
       
-      data = lenders || [];
       console.log(`Found ${data.length} lenders`);
     } else if (userRole === 'lender') {
       // Lenders can message borrowers
       console.log("Fetching all borrowers for lender");
       
-      const { data: borrowers, error: borrowersError } = await supabaseClient
-        .from('profiles')
-        .select('id, name')
-        .eq('role', 'borrower');
-        
-      if (borrowersError) {
-        console.error("Error in borrowers query:", borrowersError);
-        throw borrowersError;
+      try {
+        // Try using RPC function first
+        const { data: borrowers, error: rpcError } = await supabaseClient
+          .rpc('get_all_borrowers');
+          
+        if (rpcError) {
+          console.error("RPC error in borrowers query:", rpcError);
+          // Fall back to direct query
+          const { data: directBorrowers, error: directError } = await supabaseClient
+            .from('profiles')
+            .select('id, name')
+            .eq('role', 'borrower');
+            
+          if (directError) {
+            console.error("Direct query error in borrowers query:", directError);
+            throw directError;
+          }
+          
+          data = directBorrowers || [];
+        } else {
+          data = borrowers || [];
+        }
+      } catch (error) {
+        console.error("Error fetching borrowers:", error);
+        throw error;
       }
       
-      data = borrowers || [];
       console.log(`Found ${data.length} borrowers`);
     } else {
       // Fallback to all users for any other roles
       console.log("Using fallback method to get all users except current user");
-      const { data: profiles, error: profilesError } = await supabaseClient
-        .from('profiles')
-        .select('id, name')
-        .neq('id', userId);
-        
-      if (profilesError) {
-        console.error("Error fetching all profiles:", profilesError);
-        throw profilesError;
+      
+      try {
+        // Try using RPC function first
+        const { data: allUsers, error: rpcError } = await supabaseClient
+          .rpc('get_all_users_except', { exclude_id: userId });
+          
+        if (rpcError) {
+          console.error("RPC error in all users query:", rpcError);
+          // Fall back to direct query
+          const { data: directUsers, error: directError } = await supabaseClient
+            .from('profiles')
+            .select('id, name')
+            .neq('id', userId);
+            
+          if (directError) {
+            console.error("Direct query error in all users query:", directError);
+            throw directError;
+          }
+          
+          data = directUsers || [];
+        } else {
+          data = allUsers || [];
+        }
+      } catch (error) {
+        console.error("Error fetching all users:", error);
+        throw error;
       }
-        
-      data = profiles || [];
+      
       console.log(`Found ${data.length} general contacts`);
     }
     
