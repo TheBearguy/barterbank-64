@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Navigate, useNavigate, Link } from 'react-router-dom';
-import { DollarSign, HandCoins, Star } from 'lucide-react';
+import { DollarSign, HandCoins, Star, IndianRupee, FileText, Clock, CheckCircle } from 'lucide-react';
 import NavBar from '@/components/layout/NavBar';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +10,7 @@ import LenderTabs from '@/components/dashboard/LenderTabs';
 import { useLoansData } from '@/hooks/useLoansData';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { formatNumber } from '@/lib/utils';
 
 const Dashboard = () => {
   const { isAuthenticated, user } = useAuth();
@@ -79,6 +79,28 @@ const Dashboard = () => {
     }
   };
 
+  const totalValue = user?.user_metadata?.role === 'borrower' 
+    ? userLoans?.reduce((sum, loan) => sum + parseFloat(loan.amount.toString()), 0) || 0
+    : madeOffers?.reduce((sum, offer) => {
+        // For lenders, only include offers that are both accepted and have completed payments
+        if (offer.status === 'accepted' && offer.payment_status === 'completed') {
+          return sum + parseFloat(offer.amount.toString());
+        }
+        return sum;
+      }, 0) || 0;
+
+  const activeLoans = user?.user_metadata?.role === 'borrower'
+    ? userLoans?.filter(loan => loan.status === 'active').length || 0
+    : madeOffers?.filter(offer => offer.status === 'accepted' && offer.payment_status === 'completed').length || 0;
+
+  const pendingOffers = user?.user_metadata?.role === 'borrower'
+    ? userLoans?.filter(loan => loan.status === 'pending').length || 0
+    : receivedOffers?.filter(offer => offer.status === 'pending').length || 0;
+
+  const completedLoans = user?.user_metadata?.role === 'borrower'
+    ? userLoans?.filter(loan => loan.status === 'completed').length || 0
+    : madeOffers?.filter(offer => offer.status === 'completed').length || 0;
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
@@ -91,30 +113,28 @@ const Dashboard = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              title="Total Value"
-              value={`₹${user?.user_metadata?.role === 'borrower' 
-                ? userLoans?.reduce((sum, loan) => sum + parseFloat(loan.amount.toString()), 0) || 0
-                : madeOffers?.reduce((sum, offer) => sum + parseFloat(offer.amount.toString()), 0) || 0
-              }`}
-              icon={DollarSign}
+              title={user?.user_metadata?.role === 'borrower' ? "Total Debt" : "Pending Amount"}
+              value={formatNumber(totalValue)}
+              icon={IndianRupee}
+              isDebt={user?.user_metadata?.role === 'borrower'}
+              isPending={user?.user_metadata?.role === 'lender'}
             />
-            
             <StatCard
-              title="Active Exchanges"
-              value={user?.user_metadata?.role === 'borrower'
-                ? userLoans?.filter(loan => loan.status === 'active').length || 0
-                : madeOffers?.filter(offer => offer.status === 'accepted').length || 0
-              }
-              icon={HandCoins}
+              title="Active Loans"
+              value={activeLoans}
+              icon={FileText}
             />
-            
             <StatCard
-              title="Rating"
-              value={<span>0 <span className="text-sm text-gray-500 ml-2">(0 reviews)</span></span>}
-              icon={Star}
-              iconColor="text-yellow-500"
+              title="Pending Offers"
+              value={pendingOffers}
+              icon={Clock}
+            />
+            <StatCard
+              title="Completed"
+              value={completedLoans}
+              icon={CheckCircle}
             />
           </div>
           

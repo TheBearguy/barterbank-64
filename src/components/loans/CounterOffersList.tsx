@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { formatNumber } from "@/lib/utils"
 import { IndianRupee } from 'lucide-react';
 
 interface CounterOffer {
@@ -124,7 +125,7 @@ const CounterOffersList = ({ productOfferId, currentUserId, isBorrower }: Counte
                                         <p className="text-sm text-gray-600 mt-2">{offer.message}</p>
                                     )}
                                     <p className="text-xs text-gray-500 mt-2">
-                                        {format(new Date(offer.created_at), 'PPP p')}
+                                        {format(new Date(offer.created_at), 'MMM d, yyyy')}
                                     </p>
                                     <p className="text-xs text-gray-500">
                                         Status: {offer.status}

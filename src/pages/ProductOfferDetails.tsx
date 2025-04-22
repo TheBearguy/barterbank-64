@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { IndianRupee } from 'lucide-react';
 import CounterOffersList from '@/components/loans/CounterOffersList';
 import CounterOfferForm from '@/components/loans/CounterOfferForm';
+import { formatNumber } from "@/lib/utils"
 
 interface ProductOffer {
     id: string;
@@ -127,8 +128,10 @@ const ProductOfferDetails = () => {
                             <div>
                                 <h3 className="font-semibold">Amount</h3>
                                 <div className="flex items-center gap-2">
-                                    <IndianRupee className="h-4 w-4" />
-                                    <span>{offer.amount}</span>
+                                    <IndianRupee className="h-5 w-5" />
+                                    <span className="text-2xl font-bold">
+                                        {formatNumber(offer.amount)}
+                                    </span>
                                 </div>
                             </div>
 
