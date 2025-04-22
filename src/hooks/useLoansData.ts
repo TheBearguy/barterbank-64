@@ -2,20 +2,19 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Database } from '@/integrations/supabase/types';
 
-export interface Loan {
-  id: string;
-  amount: number;
-  status: string;
-  description: string;
-  created_at: string;
-  borrower_id: string;
+export type Loan = Database['public']['Tables']['loans']['Row'] & {
   borrower?: {
     name: string;
     id: string;
   };
   offersCount?: number;
-}
+  payments?: Array<{
+    status: string;
+  }>;
+  payment_status?: string;
+};
 
 export interface Offer {
   id: string;
@@ -30,6 +29,7 @@ export interface Offer {
     name: string;
   };
   borrower_note?: string;
+  repayment_status?: string;
 }
 
 export function useLoansData() {
@@ -57,16 +57,23 @@ export function useLoansData() {
             .from('loans')
             .select(`
               *,
-              borrower:profiles!borrower_id(name, id)
+              borrower:profiles!borrower_id(name, id),
+              payments(status)
             `)
             .eq('borrower_id', user.id);
 
           if (loansError) throw loansError;
           
-          setUserLoans(loans || []);
+          // Process loans to include payment status
+          const processedLoans = loans?.map(loan => ({
+            ...loan,
+            payment_status: loan.payments?.[0]?.status || 'pending'
+          })) || [];
+          
+          setUserLoans(processedLoans);
 
-          if (loans && loans.length > 0) {
-            const loanIds = loans.map(loan => loan.id);
+          if (processedLoans && processedLoans.length > 0) {
+            const loanIds = processedLoans.map(loan => loan.id);
             const { data: offers, error: offersError } = await supabase
               .from('offers')
               .select(`
@@ -94,7 +101,8 @@ export function useLoansData() {
             .from('offers')
             .select(`
               *,
-              loan:loans(id, borrower_id, amount, status, description)
+              lender:profiles!lender_id(name),
+              loan:loans(id, borrower_id, amount, status, description, payment_status)
             `)
             .eq('lender_id', user.id);
 

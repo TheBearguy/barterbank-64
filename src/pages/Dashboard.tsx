@@ -80,18 +80,24 @@ const Dashboard = () => {
   };
 
   const totalValue = user?.user_metadata?.role === 'borrower' 
-    ? userLoans?.reduce((sum, loan) => sum + parseFloat(loan.amount.toString()), 0) || 0
+    ? userLoans?.reduce((sum, loan) => {
+        // For borrowers, only include loans that have been funded (payment completed)
+        if (loan.payment_status === 'completed') {
+          return sum + parseFloat(loan.amount.toString());
+        }
+        return sum;
+      }, 0) || 0
     : madeOffers?.reduce((sum, offer) => {
-        // For lenders, only include offers that are both accepted and have completed payments
-        if (offer.status === 'accepted' && offer.payment_status === 'completed') {
+        // For lenders, include all pending and accepted offers
+        if (offer.status === 'pending' || (offer.status === 'accepted' && offer.repayment_status !== 'completed')) {
           return sum + parseFloat(offer.amount.toString());
         }
         return sum;
       }, 0) || 0;
 
   const activeLoans = user?.user_metadata?.role === 'borrower'
-    ? userLoans?.filter(loan => loan.status === 'active').length || 0
-    : madeOffers?.filter(offer => offer.status === 'accepted' && offer.payment_status === 'completed').length || 0;
+    ? userLoans?.filter(loan => loan.status === 'active' && loan.payment_status === 'completed').length || 0
+    : madeOffers?.filter(offer => offer.status === 'accepted' && offer.repayment_status === 'completed').length || 0;
 
   const pendingOffers = user?.user_metadata?.role === 'borrower'
     ? userLoans?.filter(loan => loan.status === 'pending').length || 0
